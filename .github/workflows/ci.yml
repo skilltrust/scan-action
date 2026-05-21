@@ -69,3 +69,32 @@ jobs:
             echo "Expected exactly 1 marker comment, got $count" >&2
             exit 1
           fi
+
+  smoke-pr-delta:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: action
+        continue-on-error: true
+        uses: ./
+        with:
+          path: tests/fixtures/malicious-repo
+          fail-on: high
+          delta: 'true'
+          comment: 'true'
+      - name: Assert marker comment posted
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          body=$(gh api "repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments" \
+            --jq '.[] | select(.body | startswith("<!-- skilltrust:action:v1 -->")) | .body' | head -1)
+          if [ -z "$body" ]; then
+            echo "Expected marker comment, got none" >&2
+            exit 1
+          fi
