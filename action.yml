@@ -26,6 +26,14 @@ inputs:
     description: Disable scope tightening and .gitignore filtering
     required: false
     default: 'false'
+  comment:
+    description: Post sticky PR comment (PR triggers only)
+    required: false
+    default: 'true'
+  github-token:
+    description: Token for posting PR comments. Default = workflow GITHUB_TOKEN.
+    required: false
+    default: ${{ github.token }}
   detector-version:
     description: Pin a specific skill-detector release. Default = version pinned to this action tag.
     required: false
@@ -82,6 +90,40 @@ runs:
         INPUT_STRICT_MCP:   ${{ inputs.strict-mcp }}
         INPUT_SCAN_ALL:     ${{ inputs.scan-all }}
       run: ${{ github.action_path }}/scripts/scan.ps1
+
+    - name: Render comment
+      shell: bash
+      if: github.event_name == 'pull_request' && inputs.comment == 'true' && runner.os != 'Windows'
+      env:
+        INPUT_SCAN_JSON: ${{ steps.scan.outputs.scan-json-path }}
+      run: ${{ github.action_path }}/scripts/render-comment.sh
+
+    - name: Render comment (Windows)
+      shell: pwsh
+      if: github.event_name == 'pull_request' && inputs.comment == 'true' && runner.os == 'Windows'
+      env:
+        INPUT_SCAN_JSON: ${{ steps.scan-win.outputs.scan-json-path }}
+      run: ${{ github.action_path }}/scripts/render-comment.ps1
+
+    - name: Post sticky comment
+      shell: bash
+      if: github.event_name == 'pull_request' && inputs.comment == 'true' && runner.os != 'Windows'
+      env:
+        GH_TOKEN: ${{ inputs.github-token }}
+        INPUT_GITHUB_REPOSITORY: ${{ github.repository }}
+        INPUT_PULL_NUMBER: ${{ github.event.pull_request.number }}
+        INPUT_IS_FORK_PR: ${{ github.event.pull_request.head.repo.fork }}
+      run: ${{ github.action_path }}/scripts/report.sh
+
+    - name: Post sticky comment (Windows)
+      shell: pwsh
+      if: github.event_name == 'pull_request' && inputs.comment == 'true' && runner.os == 'Windows'
+      env:
+        GH_TOKEN: ${{ inputs.github-token }}
+        INPUT_GITHUB_REPOSITORY: ${{ github.repository }}
+        INPUT_PULL_NUMBER: ${{ github.event.pull_request.number }}
+        INPUT_IS_FORK_PR: ${{ github.event.pull_request.head.repo.fork }}
+      run: ${{ github.action_path }}/scripts/report.ps1
 
     - name: Propagate exit code
       shell: bash
