@@ -1,0 +1,88 @@
+name: SkillTrust Scan
+description: Scan AI-agent config (SKILL.md, CLAUDE.md, .claude/, .mcp.json) for security threats
+author: SkillTrust
+branding:
+  icon: shield
+  color: green
+
+inputs:
+  path:
+    description: Path to scan (default = repo root)
+    required: false
+    default: '.'
+  fail-on:
+    description: 'Severity threshold for non-zero exit: critical|high|medium|low|info'
+    required: false
+    default: high
+  fail-on-axis:
+    description: 'Per-axis grade thresholds, comma-separated, e.g. "permission_hygiene=C,security=C"'
+    required: false
+    default: ''
+  strict-mcp:
+    description: Raise MCP external-domain rule severity from medium to high
+    required: false
+    default: 'false'
+  scan-all:
+    description: Disable scope tightening and .gitignore filtering
+    required: false
+    default: 'false'
+  detector-version:
+    description: Pin a specific skill-detector release. Default = version pinned to this action tag.
+    required: false
+    default: 'v0.2.1'
+
+outputs:
+  grade:
+    description: 'Overall trust grade (worst axis): A|B|C|D|F'
+    value: ${{ steps.scan.outputs.grade }}
+  scan-json-path:
+    description: Absolute path to the scan result JSON in the runner
+    value: ${{ steps.scan.outputs.scan-json-path }}
+  findings-count:
+    description: Total finding count
+    value: ${{ steps.scan.outputs.findings-count }}
+
+runs:
+  using: composite
+  steps:
+    - name: Install skill-detector
+      shell: bash
+      if: runner.os != 'Windows'
+      env:
+        INPUT_DETECTOR_VERSION: ${{ inputs.detector-version }}
+      run: ${{ github.action_path }}/scripts/install.sh
+
+    - name: Install skill-detector (Windows)
+      shell: pwsh
+      if: runner.os == 'Windows'
+      env:
+        INPUT_DETECTOR_VERSION: ${{ inputs.detector-version }}
+      run: ${{ github.action_path }}/scripts/install.ps1
+
+    - id: scan
+      name: Run scan
+      shell: bash
+      if: runner.os != 'Windows'
+      env:
+        INPUT_PATH:         ${{ inputs.path }}
+        INPUT_FAIL_ON:      ${{ inputs.fail-on }}
+        INPUT_FAIL_ON_AXIS: ${{ inputs.fail-on-axis }}
+        INPUT_STRICT_MCP:   ${{ inputs.strict-mcp }}
+        INPUT_SCAN_ALL:     ${{ inputs.scan-all }}
+      run: ${{ github.action_path }}/scripts/scan.sh
+
+    - id: scan-win
+      name: Run scan (Windows)
+      shell: pwsh
+      if: runner.os == 'Windows'
+      env:
+        INPUT_PATH:         ${{ inputs.path }}
+        INPUT_FAIL_ON:      ${{ inputs.fail-on }}
+        INPUT_FAIL_ON_AXIS: ${{ inputs.fail-on-axis }}
+        INPUT_STRICT_MCP:   ${{ inputs.strict-mcp }}
+        INPUT_SCAN_ALL:     ${{ inputs.scan-all }}
+      run: ${{ github.action_path }}/scripts/scan.ps1
+
+    - name: Propagate exit code
+      shell: bash
+      run: exit ${SCAN_EXIT_CODE:-0}
