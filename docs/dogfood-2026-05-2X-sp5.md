@@ -28,3 +28,15 @@ _To be filled after opening a PR on the scan-action repo itself; expect a sticky
 **Date:** 2026-05-2X
 
 _To be filled after opening a PR that intentionally downgrades an axis (e.g. add a wildcard bash perm). Verify comment shows ↓ B → D and a "Why downgraded:" line._
+
+## S5 — Telemetry + Windows + release
+
+**Date:** 2026-05-21 (local) — push pending user-created `skilltrust/scan-action` GitHub org
+
+- skill-detector v0.3.1 tagged + binaries published (resolved gosec sha1 lint issue with hash/fnv switch)
+- skillmoss-go v0.5.0-equivalent deployed-pending: migration 0008 + `POST /api/telemetry/action-run` + `/internal/metrics` extended with `action_installs_unique_7d` + `action_runs_24h`
+- scan-action tagged v1.0.0 locally; CHANGELOG + release.yml in place to move `v1` tag on each `v1.*` push
+- Matrix CI configured: ubuntu-latest + macos-latest + windows-latest × {clean, malicious} fixtures, plus smoke-pr-comment + smoke-pr-delta jobs for PR events
+- Telemetry POST end-to-end ready: action calls `telemetry.sh` → posts to skillmoss-go endpoint → row lands in `action_telemetry_pings` → surfaces in `/internal/metrics`
+- Marketplace listing submission: manual step on GitHub UI after the first remote push lands (https://github.com/marketplace/actions/skilltrust-scan)
+
