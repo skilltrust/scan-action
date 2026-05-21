@@ -42,3 +42,40 @@ EOF
   [ "$status" -eq 0 ]
   grep -q "_No findings._" "$RUNNER_TEMP/comment.md"
 }
+
+@test "render-comment.sh: renders delta column when INPUT_DELTA_JSON present" {
+  cat > "$RUNNER_TEMP/scan.json" <<EOF
+{
+  "axes": {
+    "security": {"grade": "B"},
+    "permission_hygiene": {"grade": "D"}
+  },
+  "findings": [
+    {"rule_id":"SD-014","severity":"high","axis":"permission_hygiene","file_path":".claude/settings.json","line":3,"description":"wildcard bash"}
+  ],
+  "version": "0.3.1"
+}
+EOF
+  cat > "$RUNNER_TEMP/delta.json" <<EOF
+{
+  "per_axis": {
+    "security":           {"Old":"B","New":"B","Direction":"same"},
+    "permission_hygiene": {"Old":"B","New":"D","Direction":"down"}
+  },
+  "new_findings": [
+    {"rule_id":"SD-014","axis":"permission_hygiene","file_path":".claude/settings.json","line":3,"description":"wildcard bash"}
+  ],
+  "resolved_findings": [],
+  "axis_explanations": {
+    "permission_hygiene": "↓ B → D — wildcard _(SD-014, .claude/settings.json:3)_"
+  }
+}
+EOF
+  export INPUT_SCAN_JSON="$RUNNER_TEMP/scan.json"
+  export INPUT_DELTA_JSON="$RUNNER_TEMP/delta.json"
+  run bash "$BATS_TEST_DIRNAME/../../scripts/render-comment.sh"
+  [ "$status" -eq 0 ]
+  grep -q "↓ B → D"           "$RUNNER_TEMP/comment.md"
+  grep -q "Why downgraded"    "$RUNNER_TEMP/comment.md"
+  grep -q "permission_hygiene" "$RUNNER_TEMP/comment.md"
+}
