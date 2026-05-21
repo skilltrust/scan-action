@@ -35,8 +35,12 @@ skill-detector "${ARGS[@]}" > "$OUT"
 EXIT=$?
 set -e
 
-echo "SCAN_EXIT_CODE=$EXIT" >> "$GITHUB_ENV"
-echo "scan-json-path=$OUT" >> "${GITHUB_OUTPUT:-/dev/null}"
+if [ -n "${GITHUB_ENV:-}" ]; then
+  echo "SCAN_EXIT_CODE=$EXIT" >> "$GITHUB_ENV"
+fi
+if [ -n "${GITHUB_OUTPUT:-}" ]; then
+  echo "scan-json-path=$OUT" >> "$GITHUB_OUTPUT"
+fi
 
 # Extract grade + finding count from JSON (best-effort; absent fields render empty).
 if command -v jq >/dev/null 2>&1; then
@@ -45,8 +49,10 @@ if command -v jq >/dev/null 2>&1; then
       (.axes | to_entries | map(.value.grade) | sort | last) // ""
     else "" end' "$OUT")"
   FINDINGS="$(jq -r '.findings | length // 0' "$OUT")"
-  echo "grade=$GRADE"          >> "${GITHUB_OUTPUT:-/dev/null}"
-  echo "findings-count=$FINDINGS" >> "${GITHUB_OUTPUT:-/dev/null}"
+  if [ -n "${GITHUB_OUTPUT:-}" ]; then
+    echo "grade=$GRADE"             >> "$GITHUB_OUTPUT"
+    echo "findings-count=$FINDINGS" >> "$GITHUB_OUTPUT"
+  fi
 fi
 
 echo "scan.sh: detector exit=$EXIT, scan json at $OUT"
