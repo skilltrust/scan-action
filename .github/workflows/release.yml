@@ -1,0 +1,19 @@
+name: release
+
+on:
+  push:
+    tags: ['v1.*']
+
+jobs:
+  move-major-tag:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Move v1 tag to current commit
+        run: |
+          git tag -f v1
+          git push -f origin v1
