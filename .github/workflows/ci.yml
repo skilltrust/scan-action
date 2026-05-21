@@ -1,0 +1,46 @@
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  bats:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: ./scripts/run-tests.sh
+
+  smoke-clean:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./
+        with:
+          path: tests/fixtures/clean-repo
+          fail-on: high
+
+  smoke-malicious:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: action
+        continue-on-error: true
+        uses: ./
+        with:
+          path: tests/fixtures/malicious-repo
+          fail-on: high
+      - name: Assert action failed
+        if: steps.action.outcome != 'failure'
+        run: |
+          echo "Expected action to fail on malicious fixture, got outcome=${{ steps.action.outcome }}" >&2
+          exit 1
