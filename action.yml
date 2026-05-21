@@ -34,6 +34,10 @@ inputs:
     description: Compute delta vs base branch (PR triggers only). Doubles runtime.
     required: false
     default: 'false'
+  telemetry:
+    description: Send anonymous install heartbeat to skilltrust.io (no findings, no paths)
+    required: false
+    default: 'true'
   github-token:
     description: Token for posting PR comments. Default = workflow GITHUB_TOKEN.
     required: false
@@ -150,6 +154,26 @@ runs:
         INPUT_PULL_NUMBER: ${{ github.event.pull_request.number }}
         INPUT_IS_FORK_PR: ${{ github.event.pull_request.head.repo.fork }}
       run: ${{ github.action_path }}/scripts/report.ps1
+
+    - name: Send telemetry
+      shell: bash
+      if: inputs.telemetry == 'true' && runner.os != 'Windows'
+      env:
+        INPUT_SCAN_JSON:        ${{ steps.scan.outputs.scan-json-path }}
+        INPUT_ACTION_VERSION:   1.0.0
+        INPUT_DETECTOR_VERSION: ${{ inputs.detector-version }}
+        INPUT_DELTA_ENABLED:    ${{ inputs.delta }}
+      run: ${{ github.action_path }}/scripts/telemetry.sh
+
+    - name: Send telemetry (Windows)
+      shell: pwsh
+      if: inputs.telemetry == 'true' && runner.os == 'Windows'
+      env:
+        INPUT_SCAN_JSON:        ${{ steps.scan-win.outputs.scan-json-path }}
+        INPUT_ACTION_VERSION:   1.0.0
+        INPUT_DETECTOR_VERSION: ${{ inputs.detector-version }}
+        INPUT_DELTA_ENABLED:    ${{ inputs.delta }}
+      run: ${{ github.action_path }}/scripts/telemetry.ps1
 
     - name: Propagate exit code
       shell: bash
