@@ -30,7 +30,9 @@ case "$RUNNER_ARCH" in
 esac
 
 BASE="https://github.com/velzepooz/skill-detector/releases/download/${VERSION}"
-ASSET="skill-detector_${OS}_${ARCH}.tar.gz"
+# GoReleaser asset name includes the version (without 'v' prefix), e.g.
+# skill-detector_0.3.1_linux_amd64.tar.gz
+ASSET="skill-detector_${VERSION#v}_${OS}_${ARCH}.tar.gz"
 DEST="$RUNNER_TEMP/skill-detector-install"
 
 mkdir -p "$DEST"

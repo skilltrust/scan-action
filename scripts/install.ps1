@@ -12,7 +12,10 @@ switch ($env:RUNNER_ARCH) {
 }
 
 $base  = "https://github.com/velzepooz/skill-detector/releases/download/$version"
-$asset = "skill-detector_windows_${arch}.zip"
+# GoReleaser asset name includes the version (without 'v' prefix), e.g.
+# skill-detector_0.3.1_windows_amd64.zip
+$versionNoPrefix = $version.TrimStart('v')
+$asset = "skill-detector_${versionNoPrefix}_windows_${arch}.zip"
 $dest  = Join-Path $env:RUNNER_TEMP "skill-detector-install"
 
 New-Item -ItemType Directory -Force -Path $dest | Out-Null
