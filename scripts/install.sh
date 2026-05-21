@@ -47,6 +47,8 @@ tar -xzf "$DEST/$ASSET" -C "$DEST"
 if [ -n "${GITHUB_PATH:-}" ]; then
   echo "$DEST" >> "$GITHUB_PATH"
 fi
-echo "SCAN_ACTION_DETECTOR_DIR=$DEST" >> "${GITHUB_ENV:-/dev/null}"
+if [ -n "${GITHUB_ENV:-}" ]; then
+  echo "SCAN_ACTION_DETECTOR_DIR=$DEST" >> "$GITHUB_ENV"
+fi
 
 echo "install.sh: skill-detector installed at $DEST"
