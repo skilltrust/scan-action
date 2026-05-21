@@ -30,6 +30,10 @@ inputs:
     description: Post sticky PR comment (PR triggers only)
     required: false
     default: 'true'
+  delta:
+    description: Compute delta vs base branch (PR triggers only). Doubles runtime.
+    required: false
+    default: 'false'
   github-token:
     description: Token for posting PR comments. Default = workflow GITHUB_TOKEN.
     required: false
@@ -37,7 +41,7 @@ inputs:
   detector-version:
     description: Pin a specific skill-detector release. Default = version pinned to this action tag.
     required: false
-    default: 'v0.2.1'
+    default: 'v0.3.1'
 
 outputs:
   grade:
@@ -91,18 +95,40 @@ runs:
         INPUT_SCAN_ALL:     ${{ inputs.scan-all }}
       run: ${{ github.action_path }}/scripts/scan.ps1
 
+    - id: delta
+      name: Compute delta
+      shell: bash
+      if: inputs.delta == 'true' && github.event_name == 'pull_request' && runner.os != 'Windows'
+      env:
+        INPUT_BASE_REF:        ${{ github.event.pull_request.base.ref }}
+        INPUT_HEAD_SCAN_JSON:  ${{ steps.scan.outputs.scan-json-path }}
+        INPUT_PATH:            ${{ inputs.path }}
+      run: ${{ github.action_path }}/scripts/delta.sh
+
+    - id: delta-win
+      name: Compute delta (Windows)
+      shell: pwsh
+      if: inputs.delta == 'true' && github.event_name == 'pull_request' && runner.os == 'Windows'
+      env:
+        INPUT_BASE_REF:        ${{ github.event.pull_request.base.ref }}
+        INPUT_HEAD_SCAN_JSON:  ${{ steps.scan-win.outputs.scan-json-path }}
+        INPUT_PATH:            ${{ inputs.path }}
+      run: ${{ github.action_path }}/scripts/delta.ps1
+
     - name: Render comment
       shell: bash
       if: github.event_name == 'pull_request' && inputs.comment == 'true' && runner.os != 'Windows'
       env:
-        INPUT_SCAN_JSON: ${{ steps.scan.outputs.scan-json-path }}
+        INPUT_SCAN_JSON:  ${{ steps.scan.outputs.scan-json-path }}
+        INPUT_DELTA_JSON: ${{ env.SCAN_ACTION_DELTA_JSON }}
       run: ${{ github.action_path }}/scripts/render-comment.sh
 
     - name: Render comment (Windows)
       shell: pwsh
       if: github.event_name == 'pull_request' && inputs.comment == 'true' && runner.os == 'Windows'
       env:
-        INPUT_SCAN_JSON: ${{ steps.scan-win.outputs.scan-json-path }}
+        INPUT_SCAN_JSON:  ${{ steps.scan-win.outputs.scan-json-path }}
+        INPUT_DELTA_JSON: ${{ env.SCAN_ACTION_DELTA_JSON }}
       run: ${{ github.action_path }}/scripts/render-comment.ps1
 
     - name: Post sticky comment
