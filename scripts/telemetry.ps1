@@ -1,6 +1,6 @@
 # Fire-and-forget. Never throw.
 try {
-  $ingestUrl = if ($env:INPUT_TELEMETRY_URL) { $env:INPUT_TELEMETRY_URL } else { "https://skilltrust.io/api/telemetry/action-run" }
+  $ingestUrl = if ($env:INPUT_TELEMETRY_URL) { $env:INPUT_TELEMETRY_URL } else { "https://skilltrust.app/api/telemetry/action-run" }
   $scan = $env:INPUT_SCAN_JSON
   if (-not $scan -or -not (Test-Path $scan)) { return }
 

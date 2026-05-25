@@ -2,7 +2,7 @@
 # Fire-and-forget anonymous install heartbeat. Never fails the action.
 set +e
 
-INGEST_URL="${INPUT_TELEMETRY_URL:-https://skilltrust.io/api/telemetry/action-run}"
+INGEST_URL="${INPUT_TELEMETRY_URL:-https://skilltrust.app/api/telemetry/action-run}"
 SCAN="$INPUT_SCAN_JSON"
 
 if [ -z "$SCAN" ] || [ ! -f "$SCAN" ]; then

@@ -35,7 +35,7 @@ inputs:
     required: false
     default: 'false'
   telemetry:
-    description: Send anonymous install heartbeat to skilltrust.io (no findings, no paths)
+    description: Send anonymous install heartbeat to skilltrust.app (no findings, no paths)
     required: false
     default: 'true'
   github-token:

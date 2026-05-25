@@ -86,7 +86,7 @@ If you want comments on fork PRs, the `pull_request_target` event grants write t
 
 ## Telemetry
 
-By default the Action sends a 1KB JSON heartbeat to `https://skilltrust.io/api/telemetry/action-run` once per run:
+By default the Action sends a 1KB JSON heartbeat to `https://skilltrust.app/api/telemetry/action-run` once per run:
 
 ```json
 {
