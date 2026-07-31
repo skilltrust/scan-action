@@ -24,6 +24,10 @@ jobs:
         with:
           path: tests/fixtures/clean-repo
           fail-on: high
+          # This job tests scanning, not commenting. On a pull_request event the
+          # comment steps would otherwise run without `pull-requests: write` and
+          # 403 — and would race the dedicated comment jobs for the marker.
+          comment: 'false'
 
   smoke-malicious:
     strategy:
@@ -39,6 +43,9 @@ jobs:
         with:
           path: tests/fixtures/malicious-repo
           fail-on: high
+          # Must be off, or this job fails on a comment 403 instead of on the
+          # scan's exit code — a false pass that stops testing what it claims to.
+          comment: 'false'
       - name: Assert action failed
         if: steps.action.outcome != 'failure'
         run: |
@@ -72,6 +79,11 @@ jobs:
 
   smoke-pr-delta:
     if: github.event_name == 'pull_request'
+    # Serialized after smoke-pr-comment: both drive the same marker comment on
+    # the same PR, so running them concurrently makes the "exactly 1" assertion
+    # a coin flip. Running second also means this job exercises the PATCH
+    # (sticky-update) path rather than a fresh POST.
+    needs: smoke-pr-comment
     runs-on: ubuntu-latest
     permissions:
       contents: read
