@@ -2,3 +2,14 @@
 *.log
 tmp/
 .bats-tmp/
+
+# Engineering knowledge base — local only, because this repo is public.
+# README.md is the contributor- and user-facing surface; everything under
+# docs/ is internal. Excludes the *contents* of docs/, not the directory, so a
+# re-include stays possible (git cannot re-include under an excluded parent).
+docs/*
+CLAUDE.md
+AGENTS.md
+
+# Agent scratch: per-task briefs and reports
+.agent-scratch/
