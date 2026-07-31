@@ -11,9 +11,9 @@ switch ($env:RUNNER_ARCH) {
   default { throw "install.ps1: unsupported RUNNER_ARCH: $($env:RUNNER_ARCH)" }
 }
 
-$base  = "https://github.com/velzepooz/skill-detector/releases/download/$version"
+$base  = "https://github.com/skilltrust/skill-detector/releases/download/$version"
 # GoReleaser asset name includes the version (without 'v' prefix), e.g.
-# skill-detector_0.3.1_windows_amd64.zip
+# skill-detector_0.4.0_windows_amd64.zip
 $versionNoPrefix = $version.TrimStart('v')
 $asset = "skill-detector_${versionNoPrefix}_windows_${arch}.zip"
 $dest  = Join-Path $env:RUNNER_TEMP "skill-detector-install"

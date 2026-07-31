@@ -54,4 +54,7 @@ EOF
   # Script exits non-zero (curl failed) — that's fine. We just assert the URL is right.
   [[ -s "$TMPDIR_TEST/curl.log" ]]
   grep -q "skill-detector_0.3.1_linux_amd64.tar.gz" "$TMPDIR_TEST/curl.log"
+  # Releases live under the skilltrust org. The pre-transfer velzepooz URL only
+  # resolved via GitHub redirects, which expire — pin the org explicitly.
+  grep -q "github.com/skilltrust/skill-detector/releases" "$TMPDIR_TEST/curl.log"
 }
