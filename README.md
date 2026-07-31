@@ -1,6 +1,6 @@
 # skilltrust/scan-action
 
-GitHub Action that scans AI-agent configuration files (`SKILL.md`, `CLAUDE.md`, `.claude/`, `.mcp.json`, `.codex/`, `.opencode/`) for security threats using [skill-detector](https://github.com/velzepooz/skill-detector). Posts a sticky PR comment with a four-axis trust score and a build status driven by configurable thresholds.
+GitHub Action that scans AI-agent configuration files (`SKILL.md`, `CLAUDE.md`, `.claude/`, `.mcp.json`, `.codex/`, `.opencode/`) for security threats using [skill-detector](https://github.com/skilltrust/skill-detector). Posts a sticky PR comment with a four-axis trust score and a build status driven by configurable thresholds.
 
 ## Quickstart
 
@@ -42,7 +42,7 @@ That's it. Open a PR; you'll get a sticky comment with the four-axis grade.
 | `scan-all` | `false` | Disable scope tightening and `.gitignore` filtering |
 | `delta` | `false` | Compute delta vs base branch (PR triggers only). Doubles runtime. |
 | `comment` | `true` | Post sticky PR comment |
-| `detector-version` | `v0.3.1` | Pin a specific `skill-detector` release |
+| `detector-version` | `v0.4.0` | Pin a specific `skill-detector` release |
 | `telemetry` | `true` | Send anonymous install heartbeat. See **Telemetry** below. |
 | `github-token` | `${{ github.token }}` | Token used to post PR comments |
 
@@ -90,8 +90,8 @@ By default the Action sends a 1KB JSON heartbeat to `https://skilltrust.app/api/
 
 ```json
 {
-  "action_version":   "1.0.0",
-  "detector_version": "v0.3.1",
+  "action_version":   "1.1.0",
+  "detector_version": "v0.4.0",
   "runner_os":        "Linux",
   "runner_arch":      "X64",
   "repo_visibility":  "public",

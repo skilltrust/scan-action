@@ -29,9 +29,9 @@ case "$RUNNER_ARCH" in
   *)     echo "install.sh: unsupported RUNNER_ARCH: $RUNNER_ARCH" >&2; exit 1 ;;
 esac
 
-BASE="https://github.com/velzepooz/skill-detector/releases/download/${VERSION}"
+BASE="https://github.com/skilltrust/skill-detector/releases/download/${VERSION}"
 # GoReleaser asset name includes the version (without 'v' prefix), e.g.
-# skill-detector_0.3.1_linux_amd64.tar.gz
+# skill-detector_0.4.0_linux_amd64.tar.gz
 ASSET="skill-detector_${VERSION#v}_${OS}_${ARCH}.tar.gz"
 DEST="$RUNNER_TEMP/skill-detector-install"
 
