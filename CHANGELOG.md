@@ -1,5 +1,39 @@
 # Changelog
 
+## v1.2.0 — 2026-08-05
+
+### Changed
+- **Default `detector-version` is now `v0.5.0`** (was `v0.4.0`). Users pinned to
+  `@v1` pick this up automatically.
+
+### Documented
+- Engine v0.5.0 makes a **breaking change to the exit-code contract**: a new
+  exit `3` (tool error — bad arguments, unreadable path, internal failure) is
+  now distinct from `1` (findings below threshold) and `2` (findings at/above
+  threshold). This action already passed every detector exit code through
+  opaquely (`SCAN_EXIT_CODE`), so no script change was needed — `3` fails the
+  job exactly as `1`/`2` do, which is correct: a scan that could not run is
+  not a passing scan. Documented in `README.md`'s new "Exit codes" section and
+  `docs/glossary.md`.
+
+### Why
+- Engine v0.5.0 adds `SD-024` (MCP auto-installed package execution — flags
+  `npx`/`uvx`/`pipx`/`bunx` as an MCP server's `command`), extends several
+  content rules to more agent harnesses (Codex, Gemini CLI, Cursor, Windsurf,
+  Copilot), and fixes a gitignore-matching gap. See the `skill-detector`
+  changelog for the full list, including scan-result changes (SD-018 rename,
+  SD-023 severity downgrade, SD-001 fence-scoping fix).
+
+### Compatibility
+- **No input or output changes.** The exit-code *contract* changed upstream,
+  but this action's behavior (opaque passthrough) did not — `3` was already
+  propagated the same as any other non-zero code before this release, just
+  untested and undocumented on this side.
+- **Scan results can change** the same way any engine bump does: new rules may
+  surface findings that previously passed.
+
+---
+
 ## v1.1.0 — 2026-07-31
 
 ### Changed
