@@ -42,6 +42,23 @@ teardown() { teardown_tmpdir; }
   grep -q "SCAN_EXIT_CODE=2" "$GITHUB_ENV"
 }
 
+@test "scan.sh: captures detector tool-error exit code 3 into GITHUB_ENV without failing the step" {
+  # Engine v0.5.0 added exit 3 for tool errors (bad args, unreadable path,
+  # internal failure), distinct from 1 (below threshold) / 2 (at/above
+  # threshold). The action passes it through opaquely via SCAN_EXIT_CODE,
+  # same as any other non-zero code — this pins that round-trip.
+  export FAKE_DETECTOR_EXIT=3
+  export FAKE_DETECTOR_JSON='{"findings":[],"axes":{},"files_scanned":0,"rules_applied":0}'
+  export INPUT_PATH="."
+  export INPUT_FAIL_ON="high"
+  export INPUT_FAIL_ON_AXIS=""
+  export INPUT_STRICT_MCP="false"
+  export INPUT_SCAN_ALL="false"
+  run bash "$BATS_TEST_DIRNAME/../../scripts/scan.sh"
+  [ "$status" -eq 0 ]
+  grep -q "SCAN_EXIT_CODE=3" "$GITHUB_ENV"
+}
+
 @test "scan.sh: threads --fail-on-axis when set" {
   export FAKE_DETECTOR_JSON='{"findings":[],"axes":{},"files_scanned":0,"rules_applied":0}'
   export INPUT_PATH="."

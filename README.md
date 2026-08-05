@@ -42,7 +42,7 @@ That's it. Open a PR; you'll get a sticky comment with the four-axis grade.
 | `scan-all` | `false` | Disable scope tightening and `.gitignore` filtering |
 | `delta` | `false` | Compute delta vs base branch (PR triggers only). Doubles runtime. |
 | `comment` | `true` | Post sticky PR comment |
-| `detector-version` | `v0.4.0` | Pin a specific `skill-detector` release |
+| `detector-version` | `v0.5.0` | Pin a specific `skill-detector` release |
 | `telemetry` | `true` | Send anonymous install heartbeat. See **Telemetry** below. |
 | `github-token` | `${{ github.token }}` | Token used to post PR comments |
 
@@ -53,6 +53,22 @@ That's it. Open a PR; you'll get a sticky comment with the four-axis grade.
 | `grade` | Overall trust grade (worst axis): `A`/`B`/`C`/`D`/`F` |
 | `scan-json-path` | Absolute path to scan result JSON in the runner |
 | `findings-count` | Total finding count |
+
+## Exit codes
+
+The final step re-raises the scanner's exit code (`SCAN_EXIT_CODE`), so the
+job's pass/fail comes straight from `skill-detector`:
+
+| Code | Meaning |
+|---|---|
+| `0` | No findings |
+| `1` | Findings, all below your `fail-on` / `fail-on-axis` threshold |
+| `2` | Finding at or above threshold (worst of severity OR axis-grade) |
+| `3` | Tool error (bad arguments, unreadable path, internal failure) |
+
+`3` fails the job the same as `1`/`2` — the action does not distinguish a
+scanner crash from a threshold breach. A tool error failing CI is correct: a
+scan that could not run is not a passing scan.
 
 ## Pinning
 
@@ -90,8 +106,8 @@ By default the Action sends a 1KB JSON heartbeat to `https://skilltrust.app/api/
 
 ```json
 {
-  "action_version":   "1.1.0",
-  "detector_version": "v0.4.0",
+  "action_version":   "1.2.0",
+  "detector_version": "v0.5.0",
   "runner_os":        "Linux",
   "runner_arch":      "X64",
   "repo_visibility":  "public",
