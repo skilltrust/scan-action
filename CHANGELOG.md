@@ -1,5 +1,29 @@
 # Changelog
 
+## v1.3.0 — 2026-08-14
+
+### Changed
+- **Default `detector-version` is now `v0.6.0`** (was `v0.5.0`). Users pinned to
+  `@v1` pick this up automatically.
+
+### Why
+- Engine v0.6.0 fixes two behaviors this action surfaces directly:
+  - **`delta` no longer reports churn on line shifts** — inserting a line above
+    a finding used to turn every finding below the edit into a `resolved` +
+    `new` pair, so the PR comment listed phantom "New findings" (and a
+    threshold check could fail) on whitespace-only changes. Line-shifted
+    findings are now paired off and only real changes are reported.
+  - **`delta` output is deterministic** — new/resolved lists follow scan order
+    instead of map iteration order, so re-runs render identical comments.
+  - Also upstream: capability inference covers ten more rules (the
+    `permissions` block in scan JSON gets richer), triage verdict matching is
+    collision-safe, and the registry checksum is **unchanged**
+    (`589619b6386d2c41`) — no grading changes.
+
+### Compatibility
+- **No input or output changes.** Detection results change only via the engine
+  bump; grading (axis letter) behavior is identical.
+
 ## v1.2.0 — 2026-08-05
 
 ### Changed
