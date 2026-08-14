@@ -42,7 +42,7 @@ That's it. Open a PR; you'll get a sticky comment with the four-axis grade.
 | `scan-all` | `false` | Disable scope tightening and `.gitignore` filtering |
 | `delta` | `false` | Compute delta vs base branch (PR triggers only). Doubles runtime. |
 | `comment` | `true` | Post sticky PR comment |
-| `detector-version` | `v0.5.0` | Pin a specific `skill-detector` release |
+| `detector-version` | `v0.6.0` | Pin a specific `skill-detector` release |
 | `telemetry` | `true` | Send anonymous install heartbeat. See **Telemetry** below. |
 | `github-token` | `${{ github.token }}` | Token used to post PR comments |
 
