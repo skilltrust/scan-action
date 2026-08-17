@@ -1,18 +1,23 @@
 #!/usr/bin/env bash
-# Executes scripts/delta.ps1 for real, inside the mcr.microsoft.com/powershell
-# container — not just [Parser]::ParseFile, which only proves the file is
-# syntactically valid and says nothing about whether native-command argument
-# passing (e.g. `skill-detector $scanArgs`) does what the bash sibling does.
-# `report.ps1` shipped a ParserError for three releases because bats covers
-# bash only and nothing ever executed the PowerShell half; this script exists
-# so that class of bug has an execution check, not just a parse check.
+# Executes scripts/delta.ps1 for real — not just [Parser]::ParseFile, which
+# only proves the file is syntactically valid and says nothing about whether
+# native-command argument passing (e.g. `skill-detector $scanArgs`) does what
+# the bash sibling does. `report.ps1` shipped a ParserError for three releases
+# because bats covers bash only and nothing ever executed the PowerShell half;
+# this script exists so that class of bug has an execution check, not just a
+# parse check.
 #
-# Requires Docker. Not wired into ci.yml: CI has no job that runs delta.ps1
-# on any OS today (the Windows smoke matrix only runs scan.ps1/report.ps1
-# with comment:false, and delta only runs via smoke-pr-delta, which is
-# ubuntu-only). Wiring this into CI is a separate decision — this script is
-# for local/manual verification of scripts/delta.ps1 changes until someone
-# makes that call.
+# Two modes, same assertions:
+#   direct — `pwsh` on PATH. The CI path (GitHub's ubuntu runners ship
+#            PowerShell 7 preinstalled). No Docker.
+#   docker — fallback via mcr.microsoft.com/powershell:latest. How this runs
+#            on a dev Mac with no local pwsh.
+# The chosen mode is printed, so a log shows whether the check really ran
+# natively or fell back.
+#
+# Wired into ci.yml as the `pwsh-exec-delta` job. Note it covers delta.ps1
+# only; render-comment.ps1 and report.ps1 still have parse coverage only —
+# see docs/architecture.md.
 #
 # Usage: ./tests/pwsh/exec-delta-ps1.sh
 set -euo pipefail
@@ -20,9 +25,25 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 
 HARNESS="$(mktemp)"
+trap 'rm -f "$HARNESS"' EXIT
 cat > "$HARNESS" <<'HARNESS_EOF'
 set -euo pipefail
-FAKEBIN=/fakebin
+
+# Caller-supplied, so the same body runs in a container or on the host:
+#   HARNESS_ROOT     repo root holding scripts/delta.ps1
+#   HARNESS_SCRATCH  writable scratch dir; must contain a space (see below)
+: "${HARNESS_ROOT:?HARNESS_ROOT not set}"
+: "${HARNESS_SCRATCH:?HARNESS_SCRATCH not set}"
+
+# The space is load-bearing, not incidental: it is what catches wrong native
+# argument splitting. Refuse to run a version of this test that has quietly
+# lost it.
+case "$HARNESS_SCRATCH" in
+  *' '*) ;;
+  *) echo "FAIL: HARNESS_SCRATCH must contain a space, got <$HARNESS_SCRATCH>" >&2; exit 1 ;;
+esac
+
+FAKEBIN="$HARNESS_SCRATCH/fakebin"
 mkdir -p "$FAKEBIN"
 
 # Fake skill-detector: logs each argv element on its own line as ARG[i]=<...>,
@@ -73,12 +94,14 @@ export PATH="$FAKEBIN:$PATH"
 # instead of one.
 run_case() {
   local label="$1" strict="$2" scanall="$3"
-  local rtemp="/tmp/skil security/rtemp-$label"
+  local rtemp="$HARNESS_SCRATCH/rtemp-$label"
+  rm -rf "$rtemp"
   mkdir -p "$rtemp"
   local args_log="$rtemp/skill-detector-args.log"
   : > "$args_log"
   echo '{"axes":{"security":{"grade":"B"}},"findings":[],"version":"0.3.1"}' > "$rtemp/scan.json"
 
+  local status=0
   env -i PATH="$PATH" HOME="$HOME" \
     RUNNER_TEMP="$rtemp" \
     INPUT_BASE_REF="main" \
@@ -86,12 +109,16 @@ run_case() {
     INPUT_STRICT_MCP="$strict" \
     INPUT_SCAN_ALL="$scanall" \
     ARGS_LOG="$args_log" \
-    pwsh -NoProfile -File "/w/scripts/delta.ps1"
-  local status=$?
+    pwsh -NoProfile -File "$HARNESS_ROOT/scripts/delta.ps1" || status=$?
 
   echo "==== case $label (strict=$strict scan_all=$scanall) exit=$status ===="
   cat "$args_log"
   echo
+
+  if [ "$status" -ne 0 ]; then
+    echo "FAIL: $label delta.ps1 exited $status" >&2
+    exit 1
+  fi
 
   # scan call must be the first block and must contain --strict-mcp / --scan-all
   # as their own ARG[] line iff the matching input was "true", never otherwise.
@@ -100,15 +127,15 @@ run_case() {
   if [ "$strict" = "true" ]; then
     grep -qxF -- 'ARG[4]=<--strict-mcp>' <<< "$scan_block" || { echo "FAIL: $label missing --strict-mcp as its own arg" >&2; exit 1; }
   else
-    grep -q -- '--strict-mcp' <<< "$scan_block" && { echo "FAIL: $label unexpectedly threaded --strict-mcp" >&2; exit 1; }
+    grep -qF -- '--strict-mcp' <<< "$scan_block" && { echo "FAIL: $label unexpectedly threaded --strict-mcp" >&2; exit 1; }
   fi
   if [ "$scanall" = "true" ]; then
-    grep -q -- '<--scan-all>' <<< "$scan_block" || { echo "FAIL: $label missing --scan-all as its own arg" >&2; exit 1; }
+    grep -qF -- '<--scan-all>' <<< "$scan_block" || { echo "FAIL: $label missing --scan-all as its own arg" >&2; exit 1; }
   else
-    grep -q -- '--scan-all' <<< "$scan_block" && { echo "FAIL: $label unexpectedly threaded --scan-all" >&2; exit 1; }
+    grep -qF -- '--scan-all' <<< "$scan_block" && { echo "FAIL: $label unexpectedly threaded --scan-all" >&2; exit 1; }
   fi
   # base target (ARG[1]) must survive as one argument despite the space.
-  grep -q -- "ARG\[1\]=</tmp/skil security/rtemp-$label/skilltrust-base-worktree>" <<< "$scan_block" \
+  grep -qxF -- "ARG[1]=<$rtemp/skilltrust-base-worktree>" <<< "$scan_block" \
     || { echo "FAIL: $label base target did not survive as a single argument" >&2; exit 1; }
 }
 
@@ -119,8 +146,22 @@ run_case "neither" "false" "false"
 echo "ALL CASES PASSED"
 HARNESS_EOF
 
-docker run --rm \
-  -v "$ROOT:/w:ro" \
-  -v "$HARNESS:/harness.sh:ro" \
-  mcr.microsoft.com/powershell:latest \
-  bash /harness.sh
+if command -v pwsh > /dev/null 2>&1; then
+  # Space in the scratch path is required by the harness body; keep the
+  # directory name distinct so cleanup never touches an unrelated /tmp entry.
+  SCRATCH="${TMPDIR:-/tmp}/scan-action pwsh"
+  echo "exec-delta-ps1: mode=direct (pwsh on PATH at $(command -v pwsh))"
+  pwsh --version
+  echo "exec-delta-ps1: scratch=<$SCRATCH>"
+  mkdir -p "$SCRATCH"
+  HARNESS_ROOT="$ROOT" HARNESS_SCRATCH="$SCRATCH" bash "$HARNESS"
+else
+  echo "exec-delta-ps1: mode=docker (no pwsh on PATH; using mcr.microsoft.com/powershell:latest)"
+  docker run --rm \
+    -v "$ROOT:/w:ro" \
+    -v "$HARNESS:/harness.sh:ro" \
+    -e HARNESS_ROOT=/w \
+    -e 'HARNESS_SCRATCH=/tmp/skil security' \
+    mcr.microsoft.com/powershell:latest \
+    bash /harness.sh
+fi
