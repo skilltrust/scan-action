@@ -1,5 +1,16 @@
 # Changelog
 
+## v1.4.1 — 2026-08-17
+
+### Fixed
+- **Delta PRs no longer show phantom axis drops or phantom new findings.**
+  `delta.sh`/`delta.ps1` now scan the base branch with the same
+  `strict-mcp`/`scan-all` inputs used for the head scan. Previously the base
+  scan ignored both, so with `strict-mcp: true` an external MCP domain that
+  hadn't changed could show up as a brand-new `permission_hygiene` grade
+  drop, and with `scan-all: true` every finding in a path-gated file could
+  read as newly introduced on a PR that never touched it.
+
 ## v1.4.0 — 2026-08-17
 
 ### Added
