@@ -12,6 +12,33 @@ jobs:
       - uses: actions/checkout@v7
       - run: ./scripts/run-tests.sh
 
+  # The PowerShell halves that CI actually executes are a subset: the Windows
+  # smoke legs run install/scan/telemetry, and nothing runs delta.ps1,
+  # render-comment.ps1 or report.ps1 on Windows (both legs pass
+  # comment: 'false', and smoke-pr-delta is ubuntu-only). report.ps1 shipped a
+  # ParserError for three releases in that blind spot. These two jobs close it
+  # on ubuntu — GitHub's ubuntu runners ship PowerShell 7, so no Windows runner
+  # and no Docker are needed. render-comment.ps1 and report.ps1 get parse
+  # coverage only; executing them needs pull-requests: write on a Windows leg,
+  # which is a separate decision.
+  pwsh-parse:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      # Fail loudly if the preinstalled-pwsh assumption ever stops holding,
+      # rather than let the harness below quietly fall back to Docker.
+      - run: pwsh --version
+      - name: Parse every scripts/*.ps1
+        run: ./tests/pwsh/parse-all-ps1.sh
+
+  pwsh-exec-delta:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - run: pwsh --version
+      - name: Execute delta.ps1 against fake binaries
+        run: ./tests/pwsh/exec-delta-ps1.sh
+
   smoke-clean:
     strategy:
       fail-fast: false
