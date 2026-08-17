@@ -164,10 +164,18 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      # Precondition, not decoration: the post-run assertion below is "the
-      # delta table is gone", which proves nothing unless it was there first.
+      # Precondition, not decoration: the post-run assertion is "the body
+      # changed", which proves nothing unless we know what it changed from.
       # Recording the id also lets us prove this run PATCHed the existing
-      # comment instead of orphaning it and posting a new one.
+      # comment rather than orphaning it and posting a new one.
+      #
+      # The discriminator is the FIXTURE, deliberately. An earlier version keyed
+      # on smoke-pr-delta having rendered a delta table, which only happens when
+      # some axis actually moved between base and head — i.e. only on PRs that
+      # touch tests/fixtures/. On every other PR the delta is empty, the table
+      # has no delta column, and the precondition failed for a reason that had
+      # nothing to do with the code under test. Grade D -> grade A is under this
+      # job's control and holds on every PR.
       - name: Record the comment smoke-pr-delta left behind
         id: before
         shell: bash
@@ -176,40 +184,31 @@ jobs:
         run: |
           set -euo pipefail
           api="repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments"
-          id=$(gh api "$api" --jq '[.[] | select(.body | startswith("<!-- skilltrust:action:v1 -->"))][0].id')
           body=$(gh api "$api" --jq '[.[] | select(.body | startswith("<!-- skilltrust:action:v1 -->"))][0].body')
+          id=$(gh api "$api" --jq '[.[] | select(.body | startswith("<!-- skilltrust:action:v1 -->"))][0].id')
           if [ -z "$id" ] || [ "$id" = "null" ]; then
             echo "Expected smoke-pr-delta to have left a marker comment, found none" >&2
             exit 1
           fi
-          # smoke-pr-delta runs with delta: 'true', so its axis table carries
-          # the Δ column and this three-dash separator. ASCII on purpose.
-          if ! printf '%s' "$body" | grep -qF -- '|------|-------|---|'; then
-            echo "Expected a delta-rendered body from smoke-pr-delta; the 'delta table is gone' assertion would be vacuous" >&2
+          # smoke-pr-delta scans malicious-repo, so the comment must currently
+          # say grade D. If it already said A, the flip this job asserts on
+          # would be vacuous.
+          if ! printf '%s' "$body" | grep -qF -- 'Trust Score **D**'; then
+            echo "Expected smoke-pr-delta's grade-D body; the D->A assertion would be vacuous" >&2
+            printf '%s\n' "$body" >&2
             exit 1
           fi
           echo "id=$id" >> "$GITHUB_OUTPUT"
 
-      - id: action
-        continue-on-error: true
+      # Executes render-comment.ps1 and report.ps1 — the whole point of the job.
+      # clean-repo, so the comment must flip to grade A: a change only these two
+      # scripts could have made.
+      - name: Comment from Windows (executes render-comment.ps1 + report.ps1)
         uses: ./
         with:
-          path: tests/fixtures/malicious-repo
-          # Both findings are HIGH, so a critical threshold puts them below it
-          # and the engine exits 1 — the code warn-on-below-threshold covers.
-          fail-on: critical
-          warn-on-below-threshold: 'true'
-          delta: 'false'
+          path: tests/fixtures/clean-repo
           comment: 'true'
-
-      - name: Assert warn-on-below-threshold kept the job green
-        if: steps.action.outcome != 'success'
-        # Explicit: the default shell on windows-latest is pwsh, where `>&2`
-        # is not a redirection.
-        shell: bash
-        run: |
-          echo "Expected the action to pass on exit 1 with warn-on-below-threshold: true, got outcome=${{ steps.action.outcome }}" >&2
-          exit 1
+          delta: 'false'
 
       - name: Assert the Windows comment steps actually rewrote the comment
         shell: bash
@@ -230,14 +229,24 @@ jobs:
             exit 1
           fi
           body=$(gh api "$api" --jq '[.[] | select(.body | startswith("<!-- skilltrust:action:v1 -->"))][0].body')
-          # This run rendered without delta, so the Δ column must be gone. If
-          # the Windows render/report steps had skipped, the body would still
-          # be smoke-pr-delta's and this would fail — which is the point.
-          if printf '%s' "$body" | grep -qF -- '|------|-------|---|'; then
-            echo "Comment body still carries smoke-pr-delta's delta table; the Windows render/report steps did not run" >&2
+          # If the Windows render/report steps had silently skipped, the body
+          # would still be smoke-pr-delta's grade D. That is the point.
+          if ! printf '%s' "$body" | grep -qF -- 'Trust Score **A**'; then
+            echo "Comment body is not clean-repo's grade A; the Windows render/report steps did not run" >&2
+            printf '%s\n' "$body" >&2
             exit 1
           fi
-          if ! printf '%s' "$body" | grep -qF -- '|------|-------|'; then
-            echo "Comment body has no axis table at all" >&2
-            exit 1
-          fi
+
+      # F-05 end to end on Windows: malicious-repo's findings are both HIGH, so
+      # a critical threshold leaves them below it and the engine exits 1. With
+      # the input on, propagate-exit.sh must turn that into a warning and let
+      # the step pass. comment: 'false' so this does not disturb the assertion
+      # above.
+      - name: Assert warn-on-below-threshold passes on exit 1
+        uses: ./
+        with:
+          path: tests/fixtures/malicious-repo
+          fail-on: critical
+          warn-on-below-threshold: 'true'
+          comment: 'false'
+          telemetry: 'false'
