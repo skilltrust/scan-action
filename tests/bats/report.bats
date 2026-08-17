@@ -69,4 +69,5 @@ teardown() { teardown_tmpdir; }
   run bash "$BATS_TEST_DIRNAME/../../scripts/report.sh"
   [ "$status" -eq 0 ]
   grep -q "api repos/acme/widgets/issues/42/comments" "$FAKE_GH_LOG"
+  ! grep -q "PATCH" "$FAKE_GH_LOG"
 }

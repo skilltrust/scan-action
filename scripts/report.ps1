@@ -17,13 +17,13 @@ if ($env:INPUT_IS_FORK_PR -eq "true") {
 # C9 — the Action yields to the App. See report.sh for the full reasoning;
 # ADR-0002 requires this branch to exist in both scripts or Windows diverges.
 $appMarker = "<!-- skilltrust:bot:v1 -->"
-$appComment = gh api "repos/$repo/issues/$pr/comments" `
-  --jq "[.[] | select(.body | startswith(\""+$appMarker+"\""))][0].id"
+$appJq = '[.[] | select(.body | startswith("' + $appMarker + '"))][0].id'
+$appComment = gh api "repos/$repo/issues/$pr/comments" --jq $appJq
 
 if ($appComment -and $appComment -ne "null") {
   Write-Host "report.ps1: App comment present ($appComment); yielding"
-  $ours = gh api "repos/$repo/issues/$pr/comments" `
-    --jq "[.[] | select(.body | startswith(\""+$marker+"\""))][0].id"
+  $oursJq = '[.[] | select(.body | startswith("' + $marker + '"))][0].id'
+  $ours = gh api "repos/$repo/issues/$pr/comments" --jq $oursJq
   if ($ours -and $ours -ne "null") {
     $supersededFile = Join-Path $env:RUNNER_TEMP "comment.md.superseded"
     @(
@@ -36,8 +36,8 @@ if ($appComment -and $appComment -ne "null") {
   exit 0
 }
 
-$existing = gh api "repos/$repo/issues/$pr/comments" `
-  --jq "[.[] | select(.body | startswith(\""+$marker+"\""))][0].id"
+$existingJq = '[.[] | select(.body | startswith("' + $marker + '"))][0].id'
+$existing = gh api "repos/$repo/issues/$pr/comments" --jq $existingJq
 
 if ($existing -and $existing -ne "null") {
   Write-Host "report.ps1: PATCH existing comment $existing"
