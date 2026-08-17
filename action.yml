@@ -161,7 +161,7 @@ runs:
       env:
         INPUT_SCAN_JSON:        ${{ steps.scan.outputs.scan-json-path }}
         # Keep in sync with the release tag — see docs/runbooks/release.md
-        INPUT_ACTION_VERSION:   1.4.0
+        INPUT_ACTION_VERSION:   1.4.1
         INPUT_DETECTOR_VERSION: ${{ inputs.detector-version }}
         INPUT_DELTA_ENABLED:    ${{ inputs.delta }}
       run: ${{ github.action_path }}/scripts/telemetry.sh
@@ -172,7 +172,7 @@ runs:
       env:
         INPUT_SCAN_JSON:        ${{ steps.scan-win.outputs.scan-json-path }}
         # Keep in sync with the release tag — see docs/runbooks/release.md
-        INPUT_ACTION_VERSION:   1.4.0
+        INPUT_ACTION_VERSION:   1.4.1
         INPUT_DETECTOR_VERSION: ${{ inputs.detector-version }}
         INPUT_DELTA_ENABLED:    ${{ inputs.delta }}
       run: ${{ github.action_path }}/scripts/telemetry.ps1
