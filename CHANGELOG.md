@@ -1,5 +1,24 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+- The sticky PR comment's footer now links to
+  `skilltrust.app/ci?src=action`, the funnel page for the hosted App.
+
+### Changed
+- **The Action yields to the SkillTrust GitHub App.** If a PR already carries
+  the App's comment (its own sticky marker), `report.sh`/`report.ps1` no
+  longer post a second, competing grade: a fresh run stays quiet, and a run
+  that had already posted its own comment replaces it with a short
+  "superseded" note pointing at the App's comment instead. Running both the
+  Action and the App on the same repository is now safe by design, not by
+  accident.
+- **README repositioned:** the Action is now introduced as the free,
+  runner-local tier of SkillTrust, with a comparison table against the
+  hosted GitHub App, rather than as a standalone wrapper around
+  `skill-detector`. No input, output or scanning behavior changed.
+
 ## v1.3.0 — 2026-08-14
 
 ### Changed
