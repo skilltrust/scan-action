@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Local bats entrypoint. Bash-only on purpose: ADR-0002's pair rule covers
+# scripts selected by `runner.os`, and this one never runs on a runner at all.
+
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 BATS_DIR="$ROOT/.bats-tmp/bats-core"
 

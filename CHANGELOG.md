@@ -1,5 +1,31 @@
 # Changelog
 
+## [1.5.0] — 2026-08-17
+
+### Added
+- **`warn-on-below-threshold` input** (default `false`, so nothing changes for
+  existing consumers). The engine distinguishes exit `1` — findings exist but
+  all sit below your `fail-on` / `fail-on-axis` threshold — from exit `2`, a
+  real breach. The action re-raised both identically, so with the default
+  `fail-on: high` a single MEDIUM finding failed the build even though the
+  README called that state "below your threshold". Set the input to `true` and
+  exit `1` becomes a one-line `::warning::` annotation naming the finding count
+  and grade, and the job passes. The finding still shows up in the sticky PR
+  comment.
+
+  **Exit `2` and exit `3` are never downgraded**, whatever the input says. `2`
+  is a threshold breach; `3` is a tool error, which means the scan did not run,
+  and a scan that could not run is not a passing scan. Unrecognized codes pass
+  through unchanged rather than being mapped to anything.
+
+### Changed
+- The final `Propagate exit code` step moved out of an inline `run:` into
+  `scripts/propagate-exit.sh` so the mapping is unit-tested (ten new bats
+  cases: all four codes × the input on and off, plus unset and unknown-code
+  passthrough). Behavior with the input left at its default is identical to
+  v1.4.1. The script is deliberately bash-only — the step runs under `bash` on
+  every OS, Git Bash included, so ADR-0002's script-pair rule does not apply.
+
 ## v1.4.1 — 2026-08-17
 
 ### Fixed
