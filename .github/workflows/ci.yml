@@ -12,15 +12,14 @@ jobs:
       - uses: actions/checkout@v7
       - run: ./scripts/run-tests.sh
 
-  # The PowerShell halves that CI actually executes are a subset: the Windows
-  # smoke legs run install/scan/telemetry, and nothing runs delta.ps1,
-  # render-comment.ps1 or report.ps1 on Windows (both legs pass
-  # comment: 'false', and smoke-pr-delta is ubuntu-only). report.ps1 shipped a
-  # ParserError for three releases in that blind spot. These two jobs close it
-  # on ubuntu — GitHub's ubuntu runners ship PowerShell 7, so no Windows runner
-  # and no Docker are needed. render-comment.ps1 and report.ps1 get parse
-  # coverage only; executing them needs pull-requests: write on a Windows leg,
-  # which is a separate decision.
+  # Parse coverage for every scripts/*.ps1. report.ps1 shipped a ParserError
+  # for three releases because the Windows smoke legs pass comment: 'false' and
+  # never reached it; this job catches that whole class regardless of which
+  # halves get executed. It runs on ubuntu — GitHub's ubuntu runners ship
+  # PowerShell 7, so no Windows runner and no Docker are needed.
+  # Parsing is not executing: the execution coverage lives in pwsh-exec-delta
+  # (delta.ps1), the Windows smoke legs (install/scan/telemetry.ps1) and
+  # smoke-pr-comment-windows (render-comment.ps1, report.ps1).
   pwsh-parse:
     runs-on: ubuntu-latest
     steps:
@@ -135,5 +134,110 @@ jobs:
             --jq '.[] | select(.body | startswith("<!-- skilltrust:action:v1 -->")) | .body' | head -1)
           if [ -z "$body" ]; then
             echo "Expected marker comment, got none" >&2
+            exit 1
+          fi
+
+  # The only job that executes render-comment.ps1 and report.ps1. Both are
+  # gated on `comment == 'true'` + PR + Windows, and every other Windows leg
+  # passes comment: 'false' — for two recorded reasons that still hold, so do
+  # not "fix" those legs instead of keeping this job:
+  #   * without pull-requests: write the comment step 403s, and smoke-malicious
+  #     passed anyway, which silently stopped testing exit-code propagation;
+  #   * eight jobs driving the same sticky marker made smoke-pr-comment's
+  #     "exactly 1" assertion a lottery.
+  # Hence a dedicated job with its own permissions, chained last behind
+  # smoke-pr-comment -> smoke-pr-delta so the marker is never driven
+  # concurrently. Landing last also means it exercises the PATCH
+  # (sticky-update) path rather than a fresh POST.
+  #
+  # It doubles as the end-to-end check for warn-on-below-threshold: fail-on
+  # critical against malicious-repo yields engine exit 1 (SD-017 and SD-007 are
+  # both HIGH, so below a critical threshold), which the input must turn into a
+  # warning annotation and a passing job.
+  smoke-pr-comment-windows:
+    if: github.event_name == 'pull_request'
+    needs: smoke-pr-delta
+    runs-on: windows-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v7
+
+      # Precondition, not decoration: the post-run assertion below is "the
+      # delta table is gone", which proves nothing unless it was there first.
+      # Recording the id also lets us prove this run PATCHed the existing
+      # comment instead of orphaning it and posting a new one.
+      - name: Record the comment smoke-pr-delta left behind
+        id: before
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          api="repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments"
+          id=$(gh api "$api" --jq '[.[] | select(.body | startswith("<!-- skilltrust:action:v1 -->"))][0].id')
+          body=$(gh api "$api" --jq '[.[] | select(.body | startswith("<!-- skilltrust:action:v1 -->"))][0].body')
+          if [ -z "$id" ] || [ "$id" = "null" ]; then
+            echo "Expected smoke-pr-delta to have left a marker comment, found none" >&2
+            exit 1
+          fi
+          # smoke-pr-delta runs with delta: 'true', so its axis table carries
+          # the Δ column and this three-dash separator. ASCII on purpose.
+          if ! printf '%s' "$body" | grep -qF -- '|------|-------|---|'; then
+            echo "Expected a delta-rendered body from smoke-pr-delta; the 'delta table is gone' assertion would be vacuous" >&2
+            exit 1
+          fi
+          echo "id=$id" >> "$GITHUB_OUTPUT"
+
+      - id: action
+        continue-on-error: true
+        uses: ./
+        with:
+          path: tests/fixtures/malicious-repo
+          # Both findings are HIGH, so a critical threshold puts them below it
+          # and the engine exits 1 — the code warn-on-below-threshold covers.
+          fail-on: critical
+          warn-on-below-threshold: 'true'
+          delta: 'false'
+          comment: 'true'
+
+      - name: Assert warn-on-below-threshold kept the job green
+        if: steps.action.outcome != 'success'
+        # Explicit: the default shell on windows-latest is pwsh, where `>&2`
+        # is not a redirection.
+        shell: bash
+        run: |
+          echo "Expected the action to pass on exit 1 with warn-on-below-threshold: true, got outcome=${{ steps.action.outcome }}" >&2
+          exit 1
+
+      - name: Assert the Windows comment steps actually rewrote the comment
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BEFORE_ID: ${{ steps.before.outputs.id }}
+        run: |
+          set -euo pipefail
+          api="repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments"
+          count=$(gh api "$api" --jq '[.[] | select(.body | startswith("<!-- skilltrust:action:v1 -->"))] | length')
+          if [ "$count" -ne 1 ]; then
+            echo "Expected exactly 1 marker comment, got $count" >&2
+            exit 1
+          fi
+          id=$(gh api "$api" --jq '[.[] | select(.body | startswith("<!-- skilltrust:action:v1 -->"))][0].id')
+          if [ "$id" != "$BEFORE_ID" ]; then
+            echo "Expected the sticky PATCH path to reuse comment $BEFORE_ID, got $id" >&2
+            exit 1
+          fi
+          body=$(gh api "$api" --jq '[.[] | select(.body | startswith("<!-- skilltrust:action:v1 -->"))][0].body')
+          # This run rendered without delta, so the Δ column must be gone. If
+          # the Windows render/report steps had skipped, the body would still
+          # be smoke-pr-delta's and this would fail — which is the point.
+          if printf '%s' "$body" | grep -qF -- '|------|-------|---|'; then
+            echo "Comment body still carries smoke-pr-delta's delta table; the Windows render/report steps did not run" >&2
+            exit 1
+          fi
+          if ! printf '%s' "$body" | grep -qF -- '|------|-------|'; then
+            echo "Comment body has no axis table at all" >&2
             exit 1
           fi

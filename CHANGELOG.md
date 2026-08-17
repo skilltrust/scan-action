@@ -26,6 +26,13 @@
   v1.4.1. The script is deliberately bash-only — the step runs under `bash` on
   every OS, Git Bash included, so ADR-0002's script-pair rule does not apply.
 
+### Internal
+- `render-comment.ps1` and `report.ps1` now **execute** in CI, not just parse.
+  A new `smoke-pr-comment-windows` job runs the action on `windows-latest` with
+  `comment: 'true'`, chained behind `smoke-pr-delta` so the sticky marker is
+  never driven concurrently, and asserts the comment it ends up with was
+  rewritten by that run. Every `.ps1` half now has execution coverage.
+
 ## v1.4.1 — 2026-08-17
 
 ### Fixed
