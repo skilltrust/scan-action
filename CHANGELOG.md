@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## v1.4.0 — 2026-08-17
 
 ### Added
 - The sticky PR comment's footer now links to
@@ -18,6 +18,17 @@
   runner-local tier of SkillTrust, with a comparison table against the
   hosted GitHub App, rather than as a standalone wrapper around
   `skill-detector`. No input, output or scanning behavior changed.
+
+### Fixed
+- **`scripts/report.ps1` never parsed.** In a PowerShell double-quoted string
+  `\` is not an escape character and `""` is an escaped quote, so the
+  `--jq "…startswith(\""+$marker+"\"")…"` pattern closed the string early and
+  the file failed to parse before any line ran. Every Windows runner using
+  `@v1` with `comment: true` therefore failed at the report step, and had since
+  the pattern was introduced — it survived because the bats suite covers bash
+  only and the Windows smoke job passes `comment: 'false'`. All three `--jq`
+  sites are rebuilt as single-quoted literals, verified against a real
+  PowerShell parser. macOS and Linux runners were never affected.
 
 ## v1.3.0 — 2026-08-14
 
