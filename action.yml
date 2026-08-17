@@ -30,6 +30,10 @@ inputs:
     description: Post sticky PR comment (PR triggers only)
     required: false
     default: 'true'
+  warn-on-below-threshold:
+    description: Treat exit 1 (findings, all below threshold) as a warning annotation instead of a build failure
+    required: false
+    default: 'false'
   delta:
     description: Compute delta vs base branch (PR triggers only). Doubles runtime.
     required: false
@@ -177,6 +181,19 @@ runs:
         INPUT_DELTA_ENABLED:    ${{ inputs.delta }}
       run: ${{ github.action_path }}/scripts/telemetry.ps1
 
+    # bash on every OS (Git Bash on Windows), so deliberately not a .ps1 pair —
+    # see the header comment in the script.
     - name: Propagate exit code
       shell: bash
-      run: exit ${SCAN_EXIT_CODE:-0}
+      env:
+        INPUT_WARN_ON_BELOW_THRESHOLD: ${{ inputs.warn-on-below-threshold }}
+        INPUT_GRADE:                   ${{ steps.scan.outputs.grade || steps.scan-win.outputs.grade }}
+        INPUT_FINDINGS_COUNT:          ${{ steps.scan.outputs.findings-count || steps.scan-win.outputs.findings-count }}
+      run: |
+        # github.action_path is a Windows path (D:\a\...) on Windows runners,
+        # and this step is `shell: bash` on every OS. Interpolating it straight
+        # into the script body lets bash eat the backslashes as escapes, so the
+        # path arrives as "D:ascan-actionscan-action" and the step exits 127.
+        # Read it from the env instead and normalise the separators.
+        script="${GITHUB_ACTION_PATH//\\//}/scripts/propagate-exit.sh"
+        bash "$script"
