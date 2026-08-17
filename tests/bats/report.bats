@@ -59,7 +59,8 @@ teardown() { teardown_tmpdir; }
   run bash "$BATS_TEST_DIRNAME/../../scripts/report.sh"
   [ "$status" -eq 0 ]
   grep -q "PATCH repos/acme/widgets/issues/comments/777" "$FAKE_GH_LOG"
-  grep -q "superseded" "$RUNNER_TEMP/comment.md.superseded"
+  grep -qi "superseded" "$RUNNER_TEMP/comment.md.superseded"
+  [ "$(head -n 1 "$RUNNER_TEMP/comment.md.superseded")" = "<!-- skilltrust:action:v1 -->" ]
 }
 
 @test "report.sh: posts normally when only the Action marker is around" {

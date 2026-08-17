@@ -28,7 +28,7 @@ if ($appComment -and $appComment -ne "null") {
     $supersededFile = Join-Path $env:RUNNER_TEMP "comment.md.superseded"
     @(
       $marker
-      "_superseded by the SkillTrust GitHub App, which is commenting on this pull request. The Action is still running your checks; it just stopped duplicating the report._"
+      "_Superseded by the SkillTrust GitHub App, which is commenting on this pull request. The Action is still running your checks; it just stopped duplicating the report._"
     ) | Set-Content -Path $supersededFile
     gh api -X PATCH "repos/$repo/issues/comments/$ours" -F "body=@$supersededFile" | Out-Null
     Write-Host "report.ps1: replaced our comment $ours with a superseded note"

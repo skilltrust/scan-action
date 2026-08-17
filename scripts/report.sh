@@ -42,7 +42,7 @@ if [ -n "$APP_COMMENT_ID" ]; then
     # verdict; deleting is irreversible and fails on a read-only token.
     {
       echo "$MARKER"
-      echo "_superseded by the SkillTrust GitHub App, which is commenting on this pull request. The Action is still running your checks; it just stopped duplicating the report._"
+      echo "_Superseded by the SkillTrust GitHub App, which is commenting on this pull request. The Action is still running your checks; it just stopped duplicating the report._"
     } > "$RUNNER_TEMP/comment.md.superseded"
     gh api -X PATCH "repos/$REPO/issues/comments/$OURS" \
       -F body=@"$RUNNER_TEMP/comment.md.superseded" > /dev/null
