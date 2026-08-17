@@ -42,3 +42,32 @@ teardown() { teardown_tmpdir; }
   [[ "$output" == *"fork PR detected; printing comment to log"* ]]
   [ ! -s "$FAKE_GH_LOG" ]
 }
+
+@test "report.sh: stays silent when the SkillTrust App has already commented" {
+  export FAKE_GH_BOT_ID="900"
+  unset FAKE_GH_LIST_ID
+  run bash "$BATS_TEST_DIRNAME/../../scripts/report.sh"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"App comment present"* ]]
+  ! grep -q "PATCH" "$FAKE_GH_LOG"
+  ! grep -q "\-F body=@" "$FAKE_GH_LOG"
+}
+
+@test "report.sh: replaces its own comment with a superseded note when the App is present" {
+  export FAKE_GH_BOT_ID="900"
+  export FAKE_GH_LIST_ID="777"
+  run bash "$BATS_TEST_DIRNAME/../../scripts/report.sh"
+  [ "$status" -eq 0 ]
+  grep -q "PATCH repos/acme/widgets/issues/comments/777" "$FAKE_GH_LOG"
+  grep -qi "superseded" "$RUNNER_TEMP/comment.md.superseded"
+  [ "$(head -n 1 "$RUNNER_TEMP/comment.md.superseded")" = "<!-- skilltrust:action:v1 -->" ]
+}
+
+@test "report.sh: posts normally when only the Action marker is around" {
+  unset FAKE_GH_BOT_ID
+  unset FAKE_GH_LIST_ID
+  run bash "$BATS_TEST_DIRNAME/../../scripts/report.sh"
+  [ "$status" -eq 0 ]
+  grep -q "api repos/acme/widgets/issues/42/comments" "$FAKE_GH_LOG"
+  ! grep -q "PATCH" "$FAKE_GH_LOG"
+}

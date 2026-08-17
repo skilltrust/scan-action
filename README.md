@@ -1,6 +1,28 @@
 # skilltrust/scan-action
 
-GitHub Action that scans AI-agent configuration files (`SKILL.md`, `CLAUDE.md`, `.claude/`, `.mcp.json`, `.codex/`, `.opencode/`) for security threats using [skill-detector](https://github.com/skilltrust/skill-detector). Posts a sticky PR comment with a four-axis trust score and a build status driven by configurable thresholds.
+The free tier of [SkillTrust](https://skilltrust.app/ci?src=action) — agent-configuration
+security, gated in your own CI. Scans `SKILL.md`, `CLAUDE.md`, `AGENTS.md`,
+`.claude/`, `.mcp.json`, `.codex/`, `.opencode/` and the rest of the
+agent-config surface for prompt injection, credential access, supply-chain and
+permission problems, then posts a sticky pull-request comment with a four-axis
+trust score and fails the build on the thresholds you set.
+
+Everything runs inside your runner. Nothing leaves it, on public and private
+repositories alike, and that is permanent.
+
+## This, or the GitHub App
+
+| | This Action | [The GitHub App](https://skilltrust.app/ci?src=action) |
+|---|---|---|
+| Where it runs | your runner | our servers |
+| Private repositories | free, always | 3 free per account, by design — not yet gated in production |
+| Sticky PR comment | yes | yes |
+| Remembers last week's result | no | yes |
+| Badge and a public `/r/` page | no | yes |
+| LLM triage on the noise | no | yes |
+
+Running both is fine — the Action detects the App's comment and stays quiet
+rather than posting a second one.
 
 ## Quickstart
 

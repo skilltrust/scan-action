@@ -79,3 +79,13 @@ EOF
   grep -q "Why downgraded"    "$RUNNER_TEMP/comment.md"
   grep -q "permission_hygiene" "$RUNNER_TEMP/comment.md"
 }
+
+@test "render-comment.sh: footer links into the SkillTrust funnel" {
+  cat > "$RUNNER_TEMP/scan.json" <<EOF
+{"axes":{"security":{"grade":"A"}},"findings":[],"version":"0.2.1"}
+EOF
+  export INPUT_SCAN_JSON="$RUNNER_TEMP/scan.json"
+  run bash "$BATS_TEST_DIRNAME/../../scripts/render-comment.sh"
+  [ "$status" -eq 0 ]
+  grep -q "skilltrust.app/ci?src=action" "$RUNNER_TEMP/comment.md"
+}
