@@ -23,6 +23,34 @@ if [ "${INPUT_IS_FORK_PR:-false}" = "true" ]; then
   exit 0
 fi
 
+# C9 — the Action yields to the App. The two sticky markers differ by design
+# (ADR-0004: the Action's marker is a wire contract and cannot change), so a
+# repository running both would otherwise carry two grade comments in every
+# pull request. The App is the authoritative one: it scans on our servers, has
+# history and can triage.
+APP_MARKER="<!-- skilltrust:bot:v1 -->"
+APP_COMMENT_ID="$(gh api "repos/$REPO/issues/$PR/comments" \
+  --jq '.[] | select(.body | startswith("'"$APP_MARKER"'")) | .id' | head -n 1 || true)"
+
+if [ -n "$APP_COMMENT_ID" ]; then
+  echo "report.sh: App comment present ($APP_COMMENT_ID); yielding"
+  OURS="$(gh api "repos/$REPO/issues/$PR/comments" \
+    --jq '.[] | select(.body | startswith("'"$MARKER"'")) | .id' | head -n 1 || true)"
+  if [ -n "$OURS" ]; then
+    # Leaving our last grade in place would read as a second, disagreeing bot.
+    # Replacing it is the only outcome that is neither a duplicate nor a stale
+    # verdict; deleting is irreversible and fails on a read-only token.
+    {
+      echo "$MARKER"
+      echo "_superseded by the SkillTrust GitHub App, which is commenting on this pull request. The Action is still running your checks; it just stopped duplicating the report._"
+    } > "$RUNNER_TEMP/comment.md.superseded"
+    gh api -X PATCH "repos/$REPO/issues/comments/$OURS" \
+      -F body=@"$RUNNER_TEMP/comment.md.superseded" > /dev/null
+    echo "report.sh: replaced our comment $OURS with a superseded note"
+  fi
+  exit 0
+fi
+
 # Find existing marker comment.
 EXISTING_ID="$(gh api "repos/$REPO/issues/$PR/comments" \
   --jq '.[] | select(.body | startswith("'"$MARKER"'")) | .id' | head -n 1 || true)"

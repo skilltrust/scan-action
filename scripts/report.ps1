@@ -14,6 +14,28 @@ if ($env:INPUT_IS_FORK_PR -eq "true") {
   exit 0
 }
 
+# C9 — the Action yields to the App. See report.sh for the full reasoning;
+# ADR-0002 requires this branch to exist in both scripts or Windows diverges.
+$appMarker = "<!-- skilltrust:bot:v1 -->"
+$appComment = gh api "repos/$repo/issues/$pr/comments" `
+  --jq "[.[] | select(.body | startswith(\""+$appMarker+"\""))][0].id"
+
+if ($appComment -and $appComment -ne "null") {
+  Write-Host "report.ps1: App comment present ($appComment); yielding"
+  $ours = gh api "repos/$repo/issues/$pr/comments" `
+    --jq "[.[] | select(.body | startswith(\""+$marker+"\""))][0].id"
+  if ($ours -and $ours -ne "null") {
+    $supersededFile = Join-Path $env:RUNNER_TEMP "comment.md.superseded"
+    @(
+      $marker
+      "_superseded by the SkillTrust GitHub App, which is commenting on this pull request. The Action is still running your checks; it just stopped duplicating the report._"
+    ) | Set-Content -Path $supersededFile
+    gh api -X PATCH "repos/$repo/issues/comments/$ours" -F "body=@$supersededFile" | Out-Null
+    Write-Host "report.ps1: replaced our comment $ours with a superseded note"
+  }
+  exit 0
+}
+
 $existing = gh api "repos/$repo/issues/$pr/comments" `
   --jq "[.[] | select(.body | startswith(\""+$marker+"\""))][0].id"
 
