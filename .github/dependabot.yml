@@ -1,0 +1,14 @@
+version: 2
+updates:
+  # This action is pure bash — the only third-party code it pins is the set of
+  # actions used by its own CI and release workflows.
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    labels:
+      - dependencies
+      - github-actions
+    commit-message:
+      prefix: "chore(ci)"
