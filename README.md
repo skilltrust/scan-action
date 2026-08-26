@@ -65,6 +65,7 @@ That's it. Open a PR; you'll get a sticky comment with the four-axis grade.
 | `delta` | `false` | Compute delta vs base branch (PR triggers only). Doubles runtime. |
 | `comment` | `true` | Post sticky PR comment |
 | `warn-on-below-threshold` | `false` | Turn exit `1` (findings, all below threshold) into a warning annotation instead of a build failure. See **Exit codes**. |
+| `fail-on-no-agent-surface` | `false` | Fail the build when the scan found no agent configuration files at all (default = warn only). See **When nothing was checked**. |
 | `detector-version` | `v0.6.0` | Pin a specific `skill-detector` release |
 | `telemetry` | `true` | Send anonymous install heartbeat. See **Telemetry** below. |
 | `github-token` | `${{ github.token }}` | Token used to post PR comments |
@@ -76,6 +77,7 @@ That's it. Open a PR; you'll get a sticky comment with the four-axis grade.
 | `grade` | Overall trust grade (worst axis): `A`/`B`/`C`/`D`/`F` |
 | `scan-json-path` | Absolute path to scan result JSON in the runner |
 | `findings-count` | Total finding count |
+| `no-agent-surface` | `true` when the scan found no agent configuration files — no grade was produced |
 
 ## Exit codes
 
@@ -111,6 +113,26 @@ it instead — this keeps it visible.
 threshold breach. `3` means the scan did not run at all, and a scan that could
 not run is not a passing scan — which is also why you should not reach for
 `continue-on-error` or `|| true` to get warn-not-fail behavior.
+
+### When nothing was checked
+
+If the detector finds no `SKILL.md`, `CLAUDE.md`, `AGENTS.md`, `.claude/`,
+`.agents/` or `.mcp.json` in the scanned path, there is nothing to grade —
+`no-agent-surface` is `true`, the sticky PR comment says so instead of
+showing a trust score, and the build **passes by default** with a
+`::warning::` annotation. A repository that genuinely has no agent config
+would otherwise go red permanently with no fix available, and a permanent
+red gets deleted — so the default is to withdraw the claim loudly rather than
+assert a false pass or a false fail.
+
+Set `fail-on-no-agent-surface: true` if an empty agent surface should gate
+your build (exit `2`):
+
+```yaml
+- uses: skilltrust/scan-action@v1
+  with:
+    fail-on-no-agent-surface: true
+```
 
 ## Pinning
 

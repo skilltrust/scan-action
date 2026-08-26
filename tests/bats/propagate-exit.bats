@@ -105,3 +105,49 @@ run_propagate() {
   [ "$status" -eq 7 ]
   [[ "$output" != *"::warning"* ]]
 }
+
+# --- no_agent_surface: the exit code is the withdrawn claim -----------------
+
+@test "no-agent-surface warns and exits 0 by default" {
+  SCAN_EXIT_CODE=0 INPUT_NO_AGENT_SURFACE=true \
+    run "$BATS_TEST_DIRNAME/../../scripts/propagate-exit.sh"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"::warning"* ]]
+  [[ "$output" == *"nothing was checked"* ]]
+}
+
+@test "no-agent-surface fails when the input asks it to" {
+  SCAN_EXIT_CODE=0 INPUT_NO_AGENT_SURFACE=true INPUT_FAIL_ON_NO_AGENT_SURFACE=true \
+    run "$BATS_TEST_DIRNAME/../../scripts/propagate-exit.sh"
+  [ "$status" -eq 2 ]
+}
+
+@test "a real breach still fails even with fail-on-no-agent-surface on" {
+  SCAN_EXIT_CODE=2 INPUT_NO_AGENT_SURFACE=false INPUT_FAIL_ON_NO_AGENT_SURFACE=true \
+    run "$BATS_TEST_DIRNAME/../../scripts/propagate-exit.sh"
+  [ "$status" -eq 2 ]
+}
+
+@test "no-agent-surface never downgrades a real breach (exit 2), fail-on off" {
+  SCAN_EXIT_CODE=2 INPUT_NO_AGENT_SURFACE=true INPUT_FAIL_ON_NO_AGENT_SURFACE=false \
+    run "$BATS_TEST_DIRNAME/../../scripts/propagate-exit.sh"
+  [ "$status" -eq 2 ]
+}
+
+@test "no-agent-surface never downgrades a real breach (exit 2), fail-on on" {
+  SCAN_EXIT_CODE=2 INPUT_NO_AGENT_SURFACE=true INPUT_FAIL_ON_NO_AGENT_SURFACE=true \
+    run "$BATS_TEST_DIRNAME/../../scripts/propagate-exit.sh"
+  [ "$status" -eq 2 ]
+}
+
+@test "no-agent-surface never downgrades a tool error (exit 3), fail-on off" {
+  SCAN_EXIT_CODE=3 INPUT_NO_AGENT_SURFACE=true INPUT_FAIL_ON_NO_AGENT_SURFACE=false \
+    run "$BATS_TEST_DIRNAME/../../scripts/propagate-exit.sh"
+  [ "$status" -eq 3 ]
+}
+
+@test "no-agent-surface never downgrades a tool error (exit 3), fail-on on" {
+  SCAN_EXIT_CODE=3 INPUT_NO_AGENT_SURFACE=true INPUT_FAIL_ON_NO_AGENT_SURFACE=true \
+    run "$BATS_TEST_DIRNAME/../../scripts/propagate-exit.sh"
+  [ "$status" -eq 3 ]
+}

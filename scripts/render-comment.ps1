@@ -55,9 +55,23 @@ else:
         rows.append(f"- ``{f.get('rule_id','')}`` {f.get('axis','')} · ``{f.get('file_path','')}:{f.get('line',0)}`` — {f.get('description','')}")
     findings_block = f'**Findings ({len(findings)}):**\n' + '\n'.join(rows)
 
+no_surface = scan.get('no_agent_surface') is True
+if no_surface:
+    heading = '## ∅ SkillTrust — Nothing was checked'
+    body_intro = ('No agent configuration files were found in this tree — no '
+        '`SKILL.md`, `CLAUDE.md`, `AGENTS.md`, `.claude/`, `.agents/` or '
+        '`.mcp.json`. There is no grade, and this is **not** a passing scan. '
+        'If this repository has agent config, check the `path:` input.')
+    axis_table = ''
+    findings_block = ''
+else:
+    heading = f'## 🛡 SkillTrust — Trust Score **{worst}**{grade_delta}'
+    body_intro = ''
+
 src = open(sys.argv[3]).read()
 out = (src
-    .replace('__GRADE__', worst)
+    .replace('__HEADING__', heading)
+    .replace('__BODY_INTRO__', body_intro)
     .replace('__GRADE_DELTA__', grade_delta)
     .replace('__AXIS_TABLE__', axis_table)
     .replace('__WHY_BLOCK__', why_block)
