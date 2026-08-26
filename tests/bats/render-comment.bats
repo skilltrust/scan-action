@@ -99,5 +99,8 @@ JSON
   [ "$status" -eq 0 ]
   grep -q "Nothing was checked" "$RUNNER_TEMP/comment.md"
   ! grep -q "Trust Score" "$RUNNER_TEMP/comment.md"
-  grep -q "skilltrust:action:v1" "$RUNNER_TEMP/comment.md"
+  # Marker must be the first line, not merely present — report.sh finds the
+  # sticky comment by matching it there; displaced, every push posts a new
+  # comment instead of editing the existing one.
+  [ "$(head -n 1 "$RUNNER_TEMP/comment.md")" = "<!-- skilltrust:action:v1 -->" ]
 }
