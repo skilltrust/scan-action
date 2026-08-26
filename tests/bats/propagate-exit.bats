@@ -127,3 +127,27 @@ run_propagate() {
     run "$BATS_TEST_DIRNAME/../../scripts/propagate-exit.sh"
   [ "$status" -eq 2 ]
 }
+
+@test "no-agent-surface never downgrades a real breach (exit 2), fail-on off" {
+  SCAN_EXIT_CODE=2 INPUT_NO_AGENT_SURFACE=true INPUT_FAIL_ON_NO_AGENT_SURFACE=false \
+    run "$BATS_TEST_DIRNAME/../../scripts/propagate-exit.sh"
+  [ "$status" -eq 2 ]
+}
+
+@test "no-agent-surface never downgrades a real breach (exit 2), fail-on on" {
+  SCAN_EXIT_CODE=2 INPUT_NO_AGENT_SURFACE=true INPUT_FAIL_ON_NO_AGENT_SURFACE=true \
+    run "$BATS_TEST_DIRNAME/../../scripts/propagate-exit.sh"
+  [ "$status" -eq 2 ]
+}
+
+@test "no-agent-surface never downgrades a tool error (exit 3), fail-on off" {
+  SCAN_EXIT_CODE=3 INPUT_NO_AGENT_SURFACE=true INPUT_FAIL_ON_NO_AGENT_SURFACE=false \
+    run "$BATS_TEST_DIRNAME/../../scripts/propagate-exit.sh"
+  [ "$status" -eq 3 ]
+}
+
+@test "no-agent-surface never downgrades a tool error (exit 3), fail-on on" {
+  SCAN_EXIT_CODE=3 INPUT_NO_AGENT_SURFACE=true INPUT_FAIL_ON_NO_AGENT_SURFACE=true \
+    run "$BATS_TEST_DIRNAME/../../scripts/propagate-exit.sh"
+  [ "$status" -eq 3 ]
+}

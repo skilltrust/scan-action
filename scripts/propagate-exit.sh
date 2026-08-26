@@ -39,7 +39,13 @@ CODE="${SCAN_EXIT_CODE:-0}"
 # that genuinely has no agent files would go red permanently with no fix
 # available, and the first thing anyone does with a permanent red is delete
 # the gate. Teams for whom this is a real gate opt in. ADR-0020 (skilltrust).
-if [ "${INPUT_NO_AGENT_SURFACE:-false}" = "true" ]; then
+#
+# Guarded on CODE = 0: no agent surface means no findings, which today only
+# ever means exit 0. But a tool error (3) or a real breach (2) must never be
+# reinterpreted as "nothing was checked" just because the flag also happens
+# to be set — those fall through untouched to the final `exit "$CODE"` below,
+# same as any other code this block doesn't recognize.
+if [ "$CODE" = "0" ] && [ "${INPUT_NO_AGENT_SURFACE:-false}" = "true" ]; then
   echo "::warning title=SkillTrust::no agent configuration files were found — nothing was checked. This is NOT a passing scan. Check the 'path' input, or set fail-on-no-agent-surface: true to gate on it."
   if [ "${INPUT_FAIL_ON_NO_AGENT_SURFACE:-false}" = "true" ]; then
     exit 2
