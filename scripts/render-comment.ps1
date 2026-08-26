@@ -72,7 +72,6 @@ src = open(sys.argv[3]).read()
 out = (src
     .replace('__HEADING__', heading)
     .replace('__BODY_INTRO__', body_intro)
-    .replace('__GRADE__', worst)
     .replace('__GRADE_DELTA__', grade_delta)
     .replace('__AXIS_TABLE__', axis_table)
     .replace('__WHY_BLOCK__', why_block)

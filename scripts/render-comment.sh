@@ -92,7 +92,6 @@ src = open(sys.argv[1]).read()
 out = (src
     .replace('__HEADING__',          os.environ['HEADING'])
     .replace('__BODY_INTRO__',       os.environ['BODY_INTRO'])
-    .replace('__GRADE__',            os.environ['WORST_GRADE'])
     .replace('__GRADE_DELTA__',      os.environ['GRADE_DELTA'])
     .replace('__AXIS_TABLE__',       os.environ['AXIS_TABLE'])
     .replace('__WHY_BLOCK__',        os.environ['WHY_BLOCK'])
