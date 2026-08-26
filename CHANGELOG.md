@@ -1,5 +1,27 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+- **`no-agent-surface` output and `fail-on-no-agent-surface` input.** The
+  engine can report that a scan read no agent-configuration files at all —
+  nothing was checked, so there is no grade. Without this, the action
+  rendered a trust score of em-dash, an axis table reading "no axes", and
+  exited `0` — a green check on a repository where nothing was examined.
+
+  The exit code is the machine-readable claim: with no grade asserted there
+  is nothing to disbelieve, so the default stays `0` and the claim is
+  withdrawn loudly instead — a `::warning::` annotation and a sticky PR
+  comment headed "Nothing was checked" in place of the trust score. Set
+  `fail-on-no-agent-surface: true` to turn it into exit `2` instead. Failing
+  by default was rejected: a repository that genuinely has no agent files
+  would go red permanently with no fix available, and a permanent red gets
+  deleted.
+
+  **Inert at the pinned detector version** (`v0.6.0`), which never emits the
+  `no_agent_surface` field — every new branch activates only once the pin
+  moves in a later release.
+
 ## [1.5.0] — 2026-08-17
 
 ### Added

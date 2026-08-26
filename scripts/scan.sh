@@ -49,9 +49,11 @@ if command -v jq >/dev/null 2>&1; then
       (.axes | to_entries | map(.value.grade) | sort | last) // ""
     else "" end' "$OUT")"
   FINDINGS="$(jq -r '.findings | length // 0' "$OUT")"
+  NO_SURFACE="$(jq -r 'if .no_agent_surface == true then "true" else "false" end' "$OUT")"
   if [ -n "${GITHUB_OUTPUT:-}" ]; then
-    echo "grade=$GRADE"             >> "$GITHUB_OUTPUT"
-    echo "findings-count=$FINDINGS" >> "$GITHUB_OUTPUT"
+    echo "grade=$GRADE"                 >> "$GITHUB_OUTPUT"
+    echo "findings-count=$FINDINGS"     >> "$GITHUB_OUTPUT"
+    echo "no-agent-surface=$NO_SURFACE" >> "$GITHUB_OUTPUT"
   fi
 fi
 

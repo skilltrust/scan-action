@@ -89,3 +89,27 @@ EOF
   grep -q -- "--strict-mcp" "$args_file"
   grep -q -- "--scan-all" "$args_file"
 }
+
+@test "scan.sh: exports no-agent-surface=true when the scan checked nothing" {
+  export FAKE_DETECTOR_JSON='{"findings":[],"axes":{},"no_agent_surface":true,"files_scanned":3,"rules_applied":24}'
+  export INPUT_PATH="."
+  export INPUT_FAIL_ON="high"
+  export INPUT_FAIL_ON_AXIS=""
+  export INPUT_STRICT_MCP="false"
+  export INPUT_SCAN_ALL="false"
+  run bash "$BATS_TEST_DIRNAME/../../scripts/scan.sh"
+  [ "$status" -eq 0 ]
+  grep -q '^no-agent-surface=true$' "$GITHUB_OUTPUT"
+}
+
+@test "scan.sh: exports no-agent-surface=false for a graded scan" {
+  export FAKE_DETECTOR_JSON='{"findings":[],"axes":{"security":{"grade":"A","rationale":""}},"files_scanned":1,"rules_applied":24}'
+  export INPUT_PATH="."
+  export INPUT_FAIL_ON="high"
+  export INPUT_FAIL_ON_AXIS=""
+  export INPUT_STRICT_MCP="false"
+  export INPUT_SCAN_ALL="false"
+  run bash "$BATS_TEST_DIRNAME/../../scripts/scan.sh"
+  [ "$status" -eq 0 ]
+  grep -q '^no-agent-surface=false$' "$GITHUB_OUTPUT"
+}

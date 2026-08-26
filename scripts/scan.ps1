@@ -28,10 +28,12 @@ if ($env:GITHUB_OUTPUT) {
   Add-Content -Path $env:GITHUB_OUTPUT -Value "scan-json-path=$out"
   # jq is preinstalled on windows-latest as part of git for Windows? safer: skip outputs if missing.
   if (Get-Command jq -ErrorAction SilentlyContinue) {
-    $grade    = (jq -r 'if .axes then (.axes | to_entries | map(.value.grade) | sort | last) // "" else "" end' $out)
-    $findings = (jq -r '.findings | length // 0' $out)
+    $grade      = (jq -r 'if .axes then (.axes | to_entries | map(.value.grade) | sort | last) // "" else "" end' $out)
+    $findings   = (jq -r '.findings | length // 0' $out)
+    $noSurface  = (jq -r 'if .no_agent_surface == true then "true" else "false" end' $out)
     Add-Content -Path $env:GITHUB_OUTPUT -Value "grade=$grade"
     Add-Content -Path $env:GITHUB_OUTPUT -Value "findings-count=$findings"
+    Add-Content -Path $env:GITHUB_OUTPUT -Value "no-agent-surface=$noSurface"
   }
 }
 

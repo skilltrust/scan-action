@@ -89,3 +89,15 @@ EOF
   [ "$status" -eq 0 ]
   grep -q "skilltrust.app/ci?src=action" "$RUNNER_TEMP/comment.md"
 }
+
+@test "render-comment: says nothing was checked instead of a trust score" {
+  cat > "$TMPDIR_TEST/scan.json" <<'JSON'
+{"findings":[],"axes":{},"no_agent_surface":true,"version":"v0.7.0"}
+JSON
+  export INPUT_SCAN_JSON="$TMPDIR_TEST/scan.json"
+  run bash "$BATS_TEST_DIRNAME/../../scripts/render-comment.sh"
+  [ "$status" -eq 0 ]
+  grep -q "Nothing was checked" "$RUNNER_TEMP/comment.md"
+  ! grep -q "Trust Score" "$RUNNER_TEMP/comment.md"
+  grep -q "skilltrust:action:v1" "$RUNNER_TEMP/comment.md"
+}

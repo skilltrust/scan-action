@@ -72,12 +72,26 @@ $(jq -r '.findings | sort_by(.severity, .rule_id)[:10]
     | map("- `" + .rule_id + "` " + (.axis // "") + " · `" + (.file_path // "") + ":" + (.line | tostring) + "` — " + (.description // "")) | join("\n")' "$SCAN")"
 fi
 
-export WORST_GRADE AXIS_TABLE FINDINGS_BLOCK RESOLVED_BLOCK GRADE_DELTA WHY_BLOCK DETECTOR_VERSION
+NO_SURFACE="$(jq -r 'if .no_agent_surface == true then "true" else "false" end' "$SCAN")"
+
+if [ "$NO_SURFACE" = "true" ]; then
+  HEADING='## ∅ SkillTrust — Nothing was checked'
+  BODY_INTRO='No agent configuration files were found in this tree — no `SKILL.md`, `CLAUDE.md`, `AGENTS.md`, `.claude/`, `.agents/` or `.mcp.json`. There is no grade, and this is **not** a passing scan. If this repository has agent config, check the `path:` input.'
+  AXIS_TABLE=''
+  FINDINGS_BLOCK=''
+else
+  HEADING="## 🛡 SkillTrust — Trust Score **${WORST_GRADE}**${GRADE_DELTA}"
+  BODY_INTRO=''
+fi
+
+export WORST_GRADE AXIS_TABLE FINDINGS_BLOCK RESOLVED_BLOCK GRADE_DELTA WHY_BLOCK DETECTOR_VERSION HEADING BODY_INTRO
 
 python3 -c "
 import os, sys
 src = open(sys.argv[1]).read()
 out = (src
+    .replace('__HEADING__',          os.environ['HEADING'])
+    .replace('__BODY_INTRO__',       os.environ['BODY_INTRO'])
     .replace('__GRADE__',            os.environ['WORST_GRADE'])
     .replace('__GRADE_DELTA__',      os.environ['GRADE_DELTA'])
     .replace('__AXIS_TABLE__',       os.environ['AXIS_TABLE'])

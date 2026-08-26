@@ -34,6 +34,10 @@ inputs:
     description: Treat exit 1 (findings, all below threshold) as a warning annotation instead of a build failure
     required: false
     default: 'false'
+  fail-on-no-agent-surface:
+    description: Fail the build when the scan found no agent configuration files (default = warn only)
+    required: false
+    default: 'false'
   delta:
     description: Compute delta vs base branch (PR triggers only). Doubles runtime.
     required: false
@@ -61,6 +65,9 @@ outputs:
   findings-count:
     description: Total finding count
     value: ${{ steps.scan.outputs.findings-count }}
+  no-agent-surface:
+    description: 'true when the scan found no agent configuration files — no grade was produced'
+    value: ${{ steps.scan.outputs.no-agent-surface }}
 
 runs:
   using: composite
@@ -186,9 +193,11 @@ runs:
     - name: Propagate exit code
       shell: bash
       env:
-        INPUT_WARN_ON_BELOW_THRESHOLD: ${{ inputs.warn-on-below-threshold }}
-        INPUT_GRADE:                   ${{ steps.scan.outputs.grade || steps.scan-win.outputs.grade }}
-        INPUT_FINDINGS_COUNT:          ${{ steps.scan.outputs.findings-count || steps.scan-win.outputs.findings-count }}
+        INPUT_WARN_ON_BELOW_THRESHOLD:   ${{ inputs.warn-on-below-threshold }}
+        INPUT_GRADE:                     ${{ steps.scan.outputs.grade || steps.scan-win.outputs.grade }}
+        INPUT_FINDINGS_COUNT:            ${{ steps.scan.outputs.findings-count || steps.scan-win.outputs.findings-count }}
+        INPUT_NO_AGENT_SURFACE:          ${{ steps.scan.outputs.no-agent-surface || steps.scan-win.outputs.no-agent-surface }}
+        INPUT_FAIL_ON_NO_AGENT_SURFACE:  ${{ inputs.fail-on-no-agent-surface }}
       run: |
         # github.action_path is a Windows path (D:\a\...) on Windows runners,
         # and this step is `shell: bash` on every OS. Interpolating it straight
