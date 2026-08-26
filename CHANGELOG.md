@@ -1,6 +1,39 @@
 # Changelog
 
-## [Unreleased]
+## [1.6.0] — 2026-08-26
+
+**The engine pin moves to `v0.7.0`, and that is what makes this release
+matter.** The `no-agent-surface` support below shipped in the previous commit
+but was inert: `v0.6.0` never emits the field, so every branch added for it
+was unreachable. From this release it is live.
+
+### ⚠️ Detection results change for every consumer
+
+`detector-version` goes `v0.6.0` → `v0.7.0`, a release carrying a
+measurement-driven precision programme and a rework of the engine's
+network-call demotion policy. Measured on a pinned 906-sample corpus at
+`--fail-on-axis security=B`, malicious detection rises from 187/300 to
+197/300 on an installed layout and from 113/300 to 127/300 on a raw one,
+against three more benign flags per 300 on each.
+
+**A build that passed on `v1.5.0` can fail on `v1.6.0` with no change to your
+repository.** If it does, read the finding before pinning back — the engine
+did not get noisier, it got better at the shapes it already looked for.
+
+### ⚠️ A repository with no agent config now warns instead of passing silently
+
+With the engine able to report it, the action stops rendering a trust score of
+an em dash for a scan that examined nothing. It emits a `::warning::`
+annotation and a PR comment headed `∅ SkillTrust — Nothing was checked`, and
+still exits `0` by default. Set `fail-on-no-agent-surface: true` to make it
+exit `2` instead.
+
+If your workflow scans a path that has no agent configuration, this is the
+release where you find out.
+
+### Changed
+- `detector-version` default: `v0.6.0` → `v0.7.0`.
+- `INPUT_ACTION_VERSION` in the telemetry steps: `1.5.0` → `1.6.0`.
 
 ### Added
 - **`no-agent-surface` output and `fail-on-no-agent-surface` input.** The
@@ -21,6 +54,7 @@
   **Inert at the pinned detector version** (`v0.6.0`), which never emits the
   `no_agent_surface` field — every new branch activates only once the pin
   moves in a later release.
+
 
 ## [1.5.0] — 2026-08-17
 
