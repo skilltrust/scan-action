@@ -161,7 +161,12 @@ EOF
 @test "propagate-exit.sh: under action.yml's defaults, a threshold breach still fails" {
   # The new default softens exit 1 only. A CRITICAL finding is exit 2 and
   # must still red the build with nobody having configured anything.
-  run env INPUT_WARN_ON_BELOW_THRESHOLD="$(input_default warn-on-below-threshold)" \
+  # Bare assignment (see the below-threshold case above) so a broken
+  # input_default fails loudly instead of "under action.yml's defaults"
+  # silently becoming "under propagate-exit.sh's own fallback".
+  local want
+  want="$(input_default warn-on-below-threshold)"
+  run env INPUT_WARN_ON_BELOW_THRESHOLD="$want" \
     SCAN_EXIT_CODE=2 INPUT_GRADE="F" INPUT_FINDINGS_COUNT="1" \
     bash "$BATS_TEST_DIRNAME/../../scripts/propagate-exit.sh"
   [ "$status" -eq 2 ]
@@ -169,7 +174,10 @@ EOF
 }
 
 @test "propagate-exit.sh: under action.yml's defaults, a tool error still fails" {
-  run env INPUT_WARN_ON_BELOW_THRESHOLD="$(input_default warn-on-below-threshold)" \
+  # Bare assignment, same reasoning as the two cases above.
+  local want
+  want="$(input_default warn-on-below-threshold)"
+  run env INPUT_WARN_ON_BELOW_THRESHOLD="$want" \
     SCAN_EXIT_CODE=3 \
     bash "$BATS_TEST_DIRNAME/../../scripts/propagate-exit.sh"
   [ "$status" -eq 3 ]
