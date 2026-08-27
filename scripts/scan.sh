@@ -13,7 +13,11 @@ set -euo pipefail
 #   INPUT_SCAN_ALL               "true" | "false"
 
 SCAN_PATH="${INPUT_PATH:-.}"
-FAIL_ON="${INPUT_FAIL_ON:-high}"
+# Mirrors action.yml's `fail-on` default. action.yml is the source of truth;
+# this fallback exists only for a direct invocation with no env, and
+# tests/bats/gate-defaults.bats reads action.yml and pins the two together so
+# they cannot drift.
+FAIL_ON="${INPUT_FAIL_ON:-critical}"
 
 ARGS=( "scan" "$SCAN_PATH" "--format" "json" "--fail-on" "$FAIL_ON" )
 

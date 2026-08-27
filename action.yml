@@ -11,9 +11,17 @@ inputs:
     required: false
     default: '.'
   fail-on:
-    description: 'Severity threshold for non-zero exit: critical|high|medium|low|info'
+    description: >-
+      Severity threshold for a non-zero exit: critical|high|medium|low|info.
+      Defaults to `critical`, because that is what measurement supports:
+      on engine v0.7.0 over 300 benign MalSkillBench samples in the raw
+      layout a repository scan actually sees, `high` failed 75 of them
+      (FPR 0.250) and `critical` failed 13 (FPR 0.043) — one clean
+      repository in four, against one in twenty-three. HIGH findings are
+      still reported, they just do not stop the build. Set `high` to opt
+      into the stricter gate.
     required: false
-    default: high
+    default: critical
   fail-on-axis:
     description: 'Per-axis grade thresholds, comma-separated, e.g. "permission_hygiene=C,security=C"'
     required: false
@@ -31,9 +39,16 @@ inputs:
     required: false
     default: 'true'
   warn-on-below-threshold:
-    description: Treat exit 1 (findings, all below threshold) as a warning annotation instead of a build failure
+    description: >-
+      Treat exit 1 (findings, all below the threshold) as a warning
+      annotation instead of a build failure. Defaults to `true`: the engine
+      already means exit 1 as "look, but I am not blocking you", so failing
+      on it made every below-threshold finding as loud as a real breach.
+      The findings still appear in the sticky PR comment and as a
+      `::warning::` annotation. Set `false` to fail on them. Exit 2 (a
+      threshold breach) and exit 3 (tool error) are never downgraded.
     required: false
-    default: 'false'
+    default: 'true'
   fail-on-no-agent-surface:
     description: Fail the build when the scan found no agent configuration files (default = warn only)
     required: false

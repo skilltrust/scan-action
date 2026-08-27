@@ -13,7 +13,7 @@ set -euo pipefail
 # Required env:
 #   SCAN_EXIT_CODE                 deferred scanner exit code (unset = 0)
 # Optional env:
-#   INPUT_WARN_ON_BELOW_THRESHOLD    "true" | "false" (default "false")
+#   INPUT_WARN_ON_BELOW_THRESHOLD    "true" | "false" (default "true", mirroring action.yml)
 #   INPUT_GRADE                      scan step `grade` output, for the annotation
 #   INPUT_FINDINGS_COUNT             scan step `findings-count` output, ditto
 #   INPUT_NO_AGENT_SURFACE           scan step `no-agent-surface` output, "true" | "false"
@@ -53,7 +53,7 @@ if [ "$CODE" = "0" ] && [ "${INPUT_NO_AGENT_SURFACE:-false}" = "true" ]; then
   exit 0
 fi
 
-if [ "$CODE" = "1" ] && [ "${INPUT_WARN_ON_BELOW_THRESHOLD:-false}" = "true" ]; then
+if [ "$CODE" = "1" ] && [ "${INPUT_WARN_ON_BELOW_THRESHOLD:-true}" = "true" ]; then
   DETAIL="grade ${INPUT_GRADE:-?}"
   if [ -n "${INPUT_FINDINGS_COUNT:-}" ]; then
     DETAIL="${INPUT_FINDINGS_COUNT} finding(s), $DETAIL"
