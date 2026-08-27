@@ -78,8 +78,8 @@ EOF
   # If the measurement is ever redone, this case is meant to be updated with
   # it — not deleted.
   desc="$(input_description fail-on)"
-  [[ "$desc" == *"0.250"* ]]
-  [[ "$desc" == *"0.043"* ]]
+  [[ "$desc" == *"0.370"* ]]
+  [[ "$desc" == *"0.067"* ]]
 }
 
 @test "action.yml: the warn-on-below-threshold description explains the default, not just the switch" {

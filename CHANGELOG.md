@@ -1,5 +1,45 @@
 # Changelog
 
+## [1.8.0] — 2026-08-27
+
+### The engine pin moves to `v0.8.0` — your grade may move with it
+
+`detector-version` default: `v0.7.0` → `v0.8.0`.
+
+**Any directory containing a `SKILL.md` is now a skill root, and its whole
+subtree is scanned.** Before this, a payload sitting in `scripts/` beside a
+manifest was never read in a repository checkout — only the manifest above it
+was. That is the layout this Action actually sees, so the Action was the
+surface losing most from it.
+
+**A repository that graded A may now grade D.** That is the point of the
+change, not a regression: the file was always there, the scanner just could
+not see it. Nothing about your configuration changed.
+
+`node_modules/`, `vendor/`, `dist/`, `build/`, `target/`, `.next/` and `.git/`
+are still never scanned, and a `SKILL.md` inside them creates no scope root.
+`.github/` and `.vscode/` are not pulled in wholesale either — only the
+specific instruction and MCP files in them that were always in scope.
+
+### The `fail-on: critical` default is re-measured, and it holds
+
+The default was justified by a measurement, so widening the scope means
+re-taking it. On engine `v0.8.0`, 300 benign and 300 malicious MalSkillBench
+samples, raw layout:
+
+| `fail-on` | Benign failed, of 300 | Malicious caught, of 300 | FPR |
+|---|---|---|---|
+| `medium` | 124 | 219 | 0.413 |
+| `high` | 111 | 198 | 0.370 |
+| `critical` (**the default**) | 20 | 70 | **0.067** |
+
+Against `v0.7.0` the default now catches **70 malicious repositories instead
+of 49**, for 20 benign failures instead of 13. One clean repository in fifteen
+reds its build, against one in under three at `fail-on: high`. The default
+stands, and it got materially more effective.
+
+No input, output or behavior of the Action itself changed in this release.
+
 ## [1.7.0] — 2026-08-27
 
 ### Changed
