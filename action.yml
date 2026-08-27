@@ -44,9 +44,10 @@ inputs:
       annotation instead of a build failure. Defaults to `true`: the engine
       already means exit 1 as "look, but I am not blocking you", so failing
       on it made every below-threshold finding as loud as a real breach.
-      The findings still appear in the sticky PR comment and as a
-      `::warning::` annotation. Set `false` to fail on them. Exit 2 (a
-      threshold breach) and exit 3 (tool error) are never downgraded.
+      The findings still appear in the job log as a `::warning::` annotation,
+      and on pull-request runs, in the sticky PR comment too. Set `false` to
+      fail on them. Exit 2 (a threshold breach) and exit 3 (tool error) are
+      never downgraded.
     required: false
     default: 'true'
   fail-on-no-agent-surface:
