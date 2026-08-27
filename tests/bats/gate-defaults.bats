@@ -17,11 +17,17 @@ ACTION_YML() { echo "$BATS_TEST_DIRNAME/../../action.yml"; }
 
 # Prints the `default:` value of a named top-level input block in action.yml.
 input_default() {
-  awk -v name="$1" '
+  local value
+  value="$(awk -v name="$1" '
     $0 == "  " name ":" { inb = 1; next }
     inb && /^  [a-z][a-z0-9-]*:$/ { inb = 0 }
     inb && /^    default:/ { sub(/^    default:[ \t]*/, ""); print; exit }
-  ' "$(ACTION_YML)" | tr -d "'\""
+  ' "$(ACTION_YML)" | tr -d "'\"")"
+  if [ -z "$value" ]; then
+    echo "input_default: no default found for input '$1' in action.yml" >&2
+    return 1
+  fi
+  printf '%s' "$value"
 }
 
 # Prints the `description:` block of a named top-level input, folded to one line.
