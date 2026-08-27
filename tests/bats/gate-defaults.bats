@@ -103,7 +103,16 @@ EOF
 
 @test "scan.sh: action.yml's default reaches the engine as --fail-on critical" {
   recording_detector
-  run env INPUT_FAIL_ON="$(input_default fail-on)" \
+  # A bare assignment, not `env VAR="$(...)"`: under `set -e`, a command
+  # substitution's failure is only propagated by the former. `env
+  # INPUT_FAIL_ON="$(input_default fail-on)" ...` would swallow
+  # input_default's `return 1` and hand env an empty string, which scan.sh's
+  # own `${INPUT_FAIL_ON:-critical}` fallback then silently repairs to the
+  # same value this case expects — a vacuous pass exactly when the awk it is
+  # meant to catch is broken.
+  local want
+  want="$(input_default fail-on)"
+  run env INPUT_FAIL_ON="$want" \
     INPUT_PATH="." INPUT_FAIL_ON_AXIS="" INPUT_STRICT_MCP="false" INPUT_SCAN_ALL="false" \
     RUNNER_TEMP="$RUNNER_TEMP" GITHUB_ENV="$GITHUB_ENV" GITHUB_OUTPUT="$GITHUB_OUTPUT" \
     PATH="$PATH" bash "$BATS_TEST_DIRNAME/../../scripts/scan.sh"
@@ -135,7 +144,14 @@ EOF
 }
 
 @test "propagate-exit.sh: under action.yml's defaults, a below-threshold finding warns and passes" {
-  run env INPUT_WARN_ON_BELOW_THRESHOLD="$(input_default warn-on-below-threshold)" \
+  # Same reasoning as scan.sh's default case above: a bare assignment so
+  # input_default's failure can't be swallowed by `env VAR="$(...)"` under
+  # `set -e`, which would otherwise hand propagate-exit.sh an empty string
+  # that its own `${INPUT_WARN_ON_BELOW_THRESHOLD:-true}` fallback repairs to
+  # the very value being asserted.
+  local want
+  want="$(input_default warn-on-below-threshold)"
+  run env INPUT_WARN_ON_BELOW_THRESHOLD="$want" \
     SCAN_EXIT_CODE=1 INPUT_GRADE="C" INPUT_FINDINGS_COUNT="1" \
     bash "$BATS_TEST_DIRNAME/../../scripts/propagate-exit.sh"
   [ "$status" -eq 0 ]
