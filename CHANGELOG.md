@@ -9,8 +9,8 @@ after upgrading.** `fail-on` now defaults to `critical` instead of `high`, and
 `warn-on-below-threshold` now defaults to `true` instead of `false`. If your
 workflow does not set those inputs, a HIGH finding that reddens your build on
 `v1.6.0` becomes a `::warning::` annotation on `v1.7.0` and the job goes
-green. Nothing is hidden — the finding still appears in the sticky PR comment
-and in the job log.
+green. Nothing is hidden — the finding still appears in the job log, and on
+pull-request runs, in the sticky PR comment too.
 
 **To keep the old behaviour, set both inputs explicitly:**
 

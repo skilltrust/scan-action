@@ -80,6 +80,10 @@ jobs:
           # comment steps would otherwise run without `pull-requests: write` and
           # 403 — and would race the dedicated comment jobs for the marker.
           comment: 'false'
+          # warn-on-below-threshold now defaults to true; pin it off so this job
+          # stays as strict as it was — if clean-repo ever starts producing a
+          # below-threshold finding, it should still red this job, not go green.
+          warn-on-below-threshold: 'false'
 
   smoke-malicious:
     strategy:

@@ -5,7 +5,8 @@ security, gated in your own CI. Scans `SKILL.md`, `CLAUDE.md`, `AGENTS.md`,
 `.claude/`, `.mcp.json`, `.codex/`, `.opencode/` and the rest of the
 agent-config surface for prompt injection, credential access, supply-chain and
 permission problems, then posts a sticky pull-request comment with a four-axis
-trust score and fails the build on the thresholds you set.
+trust score and fails the build on CRITICAL findings by default — and on
+whatever thresholds you set.
 
 Everything runs inside your runner. Nothing leaves it, on public and private
 repositories alike, and that is permanent.
@@ -139,9 +140,9 @@ the action re-raised it anyway, so with `fail-on: high` a single MEDIUM
 finding reddened the build exactly like a breach. Since v1.7.0
 `warn-on-below-threshold` defaults to `true` and it does not.
 
-The finding still appears in the sticky PR comment and in the job log as a
-warning annotation; only the build result changes. If you want the old
-behaviour back:
+The finding still appears in the job log as a warning annotation, and on
+pull-request runs, in the sticky PR comment too; only the build result
+changes. If you want the old behaviour back:
 
 ```yaml
 - uses: skilltrust/scan-action@v1
@@ -212,8 +213,8 @@ By default the Action sends a 1KB JSON heartbeat to `https://skilltrust.app/api/
 
 ```json
 {
-  "action_version":   "1.2.0",
-  "detector_version": "v0.5.0",
+  "action_version":   "1.7.0",
+  "detector_version": "v0.7.0",
   "runner_os":        "Linux",
   "runner_arch":      "X64",
   "repo_visibility":  "public",

@@ -132,6 +132,19 @@ EOF
   grep -q -- "--fail-on high" "$TMPDIR_TEST/args.txt"
 }
 
+# --- scan.ps1 mirrors it too, and bats cannot execute it to check -----------
+
+@test "scan.ps1: the PowerShell fallback matches action.yml, which bats cannot execute" {
+  # bats never runs pwsh, and parse-all-ps1.sh only parses — a wrong literal
+  # here is invisible to both. ADR-0002's "change one, change both" needs a
+  # check that does not depend on executing the .ps1 half. Bare assignment
+  # (see the scan.sh case above) so a broken input_default fails loudly
+  # rather than being swallowed under `set -e`.
+  local want
+  want="$(input_default fail-on)"
+  grep -qF "else { \"$want\" }" "$BATS_TEST_DIRNAME/../../scripts/scan.ps1"
+}
+
 # --- propagate-exit.sh mirrors it -------------------------------------------
 
 @test "propagate-exit.sh: an unset warn input falls back to true, matching action.yml" {
@@ -181,4 +194,28 @@ EOF
     SCAN_EXIT_CODE=3 \
     bash "$BATS_TEST_DIRNAME/../../scripts/propagate-exit.sh"
   [ "$status" -eq 3 ]
+}
+
+# --- the below-threshold annotation's tail is event-aware -------------------
+# The PR-comment steps in action.yml only run on `pull_request`; a push build
+# has no comment to point at, so the annotation must not tell it to look for
+# one.
+
+@test "propagate-exit.sh: on a pull_request run, the below-threshold annotation points at the PR comment" {
+  run env GITHUB_EVENT_NAME=pull_request \
+    SCAN_EXIT_CODE=1 INPUT_WARN_ON_BELOW_THRESHOLD=true INPUT_GRADE="C" INPUT_FINDINGS_COUNT="1" \
+    bash "$BATS_TEST_DIRNAME/../../scripts/propagate-exit.sh"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"below your fail-on threshold"* ]]
+  [[ "$output" == *"review the PR comment"* ]]
+}
+
+@test "propagate-exit.sh: on a push run, the below-threshold annotation points at the job log, not a PR comment that will not exist" {
+  run env GITHUB_EVENT_NAME=push \
+    SCAN_EXIT_CODE=1 INPUT_WARN_ON_BELOW_THRESHOLD=true INPUT_GRADE="C" INPUT_FINDINGS_COUNT="1" \
+    bash "$BATS_TEST_DIRNAME/../../scripts/propagate-exit.sh"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"below your fail-on threshold"* ]]
+  [[ "$output" != *"PR comment"* ]]
+  [[ "$output" == *"job log"* ]]
 }

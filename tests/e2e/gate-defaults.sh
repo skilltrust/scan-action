@@ -21,6 +21,15 @@ set -euo pipefail
 #
 # Usage: put skill-detector (the version action.yml pins) on PATH, then
 #   ./tests/e2e/gate-defaults.sh
+#
+# The engine's version is enforced, not just echoed: a stale skill-detector on
+# PATH would otherwise let this harness run to completion and report a
+# confident wrong answer. Escape hatch: SKILL_DETECTOR_VERSION_CHECK=off skips
+# the check, because a locally source-built engine reports a dev version
+# string (e.g. "0.1.0-dev") while still carrying the pinned ruleset, and that
+# is how this harness gets run outside CI. CI itself installs the pinned
+# release before running this script (see .github/workflows/ci.yml), so it
+# stays strict without ever needing the hatch.
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 ACTION_YML="$ROOT/action.yml"
@@ -49,7 +58,22 @@ PINNED_ENGINE="$(input_default detector-version)"
 [ -n "$DEFAULT_WARN" ]    || { echo "gate-defaults.sh: could not read the warn-on-below-threshold default from action.yml" >&2; exit 1; }
 
 echo "gate-defaults.sh: action.yml defaults — fail-on=$DEFAULT_FAIL_ON warn-on-below-threshold=$DEFAULT_WARN"
-echo "gate-defaults.sh: action.yml pins engine $PINNED_ENGINE; PATH has $(skill-detector version)"
+
+FOUND_VERSION="$(skill-detector version)"
+echo "gate-defaults.sh: action.yml pins engine $PINNED_ENGINE; PATH has $FOUND_VERSION"
+
+# Compare with and without a leading "v" — action.yml's default carries one,
+# `skill-detector version` output may or may not.
+PINNED_BARE="${PINNED_ENGINE#v}"
+if [[ "$FOUND_VERSION" != *"$PINNED_ENGINE"* && "$FOUND_VERSION" != *"$PINNED_BARE"* ]]; then
+  if [ "${SKILL_DETECTOR_VERSION_CHECK:-}" = "off" ]; then
+    echo "gate-defaults.sh: WARNING — SKILL_DETECTOR_VERSION_CHECK=off, ignoring the mismatch (pinned $PINNED_ENGINE, PATH has $FOUND_VERSION). This is expected for a local source build that carries the pinned ruleset but not the release version string; it is NOT expected in CI." >&2
+  else
+    echo "gate-defaults.sh: skill-detector on PATH ($FOUND_VERSION) does not match action.yml's pinned $PINNED_ENGINE." >&2
+    echo "gate-defaults.sh: if this is a local source build with the pinned ruleset (which reports a dev version, not the release tag), set SKILL_DETECTOR_VERSION_CHECK=off and re-run." >&2
+    exit 1
+  fi
+fi
 
 FAILURES=0
 fail() { echo "  FAIL: $*" >&2; FAILURES=$((FAILURES + 1)); }
@@ -115,6 +139,9 @@ jq -e '[.findings[].severity] | index("CRITICAL")' "$LAST_JSON" >/dev/null \
 echo "case 5 (sanity): a clean repository under the defaults — must pass silently"
 run_action clean-repo "$DEFAULT_FAIL_ON" "$DEFAULT_WARN"
 [ "$LAST_FINAL" -eq 0 ] || fail "expected exit 0 on clean-repo, got $LAST_FINAL"
+case "$LAST_OUTPUT" in
+  *"::warning"*) fail "expected no ::warning annotation on clean-repo (that would make \"silently\" false), got: $LAST_OUTPUT" ;;
+esac
 
 echo
 if [ "$FAILURES" -ne 0 ]; then
