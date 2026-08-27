@@ -5,7 +5,8 @@ security, gated in your own CI. Scans `SKILL.md`, `CLAUDE.md`, `AGENTS.md`,
 `.claude/`, `.mcp.json`, `.codex/`, `.opencode/` and the rest of the
 agent-config surface for prompt injection, credential access, supply-chain and
 permission problems, then posts a sticky pull-request comment with a four-axis
-trust score and fails the build on the thresholds you set.
+trust score and fails the build on CRITICAL findings by default — and on
+whatever thresholds you set.
 
 Everything runs inside your runner. Nothing leaves it, on public and private
 repositories alike, and that is permanent.
@@ -53,20 +54,24 @@ jobs:
 
 That's it. Open a PR; you'll get a sticky comment with the four-axis grade.
 
+Out of the box the build fails only on a **CRITICAL** finding. Everything
+below that is reported and does not block the merge — see
+**What fails your build** for why, and for how to tighten it.
+
 ## Inputs
 
 | Input | Default | Description |
 |---|---|---|
 | `path` | `.` | Path to scan |
-| `fail-on` | `high` | Severity threshold: `critical`/`high`/`medium`/`low`/`info` |
+| `fail-on` | `critical` | Severity threshold: `critical`/`high`/`medium`/`low`/`info`. See **What fails your build**. |
 | `fail-on-axis` | `''` | Per-axis grades, e.g. `permission_hygiene=C,security=C` |
 | `strict-mcp` | `false` | Raise MCP external-domain rule severity from medium to high |
 | `scan-all` | `false` | Disable scope tightening and `.gitignore` filtering |
 | `delta` | `false` | Compute delta vs base branch (PR triggers only). Doubles runtime. |
 | `comment` | `true` | Post sticky PR comment |
-| `warn-on-below-threshold` | `false` | Turn exit `1` (findings, all below threshold) into a warning annotation instead of a build failure. See **Exit codes**. |
+| `warn-on-below-threshold` | `true` | Turn exit `1` (findings, all below threshold) into a warning annotation instead of a build failure. See **Exit codes**. |
 | `fail-on-no-agent-surface` | `false` | Fail the build when the scan found no agent configuration files at all (default = warn only). See **When nothing was checked**. |
-| `detector-version` | `v0.6.0` | Pin a specific `skill-detector` release |
+| `detector-version` | `v0.7.0` | Pin a specific `skill-detector` release |
 | `telemetry` | `true` | Send anonymous install heartbeat. See **Telemetry** below. |
 | `github-token` | `${{ github.token }}` | Token used to post PR comments |
 
@@ -79,35 +84,73 @@ That's it. Open a PR; you'll get a sticky comment with the four-axis grade.
 | `findings-count` | Total finding count |
 | `no-agent-surface` | `true` when the scan found no agent configuration files — no grade was produced |
 
-## Exit codes
+## What fails your build
 
-The final step re-raises the scanner's exit code (`SCAN_EXIT_CODE`), so the
-job's pass/fail comes straight from `skill-detector`:
+By default, only a **CRITICAL** finding does. HIGH, MEDIUM, LOW and INFO
+findings are reported — in the sticky PR comment and as a `::warning::`
+annotation — and the job stays green.
 
-| Code | Meaning | Default | With `warn-on-below-threshold: true` |
-|---|---|---|---|
-| `0` | No findings | pass | pass |
-| `1` | Findings, all below your `fail-on` / `fail-on-axis` threshold | **fail** | pass, with a `::warning::` annotation |
-| `2` | Finding at or above threshold (worst of severity OR axis-grade) | **fail** | **fail** |
-| `3` | Tool error (bad arguments, unreadable path, internal failure) | **fail** | **fail** |
+That default is a measurement, not a preference. On engine `v0.7.0`, against
+300 benign samples from the MalSkillBench corpus in the raw layout a
+repository scan actually sees:
 
-### Warn instead of fail on below-threshold findings
+| `fail-on` | Benign repos failed, of 300 | Malicious caught, of 300 | Precision | FPR |
+|---|---|---|---|---|
+| `high` (the default before v1.7.0) | 75 | 136 | 0.645 | **0.250** |
+| `medium` | 86 | 159 | 0.649 | 0.287 |
+| `critical` (**the default**) | 13 | 45 | 0.776 | **0.043** |
 
-By default a below-threshold finding reds the build exactly like a breach, so
-with `fail-on: high` a single MEDIUM finding fails your check even though the
-scan is telling you it is below the line you set. If you want those surfaced
-without blocking the merge, that is what the input is for:
+The benign pool is ClawHub's most-downloaded skills, so those are close to
+what an ordinary repository contains. At `fail-on: high` one clean repository
+in four reds its build on the first run — and a gate that is wrong one time in
+four gets switched off in week one, which costs more than the findings it
+would have caught. The gate is not the only layer: the comment still shows
+everything.
+
+Want the stricter posture? Ask for it explicitly, and you know what you signed
+up for:
 
 ```yaml
 - uses: skilltrust/scan-action@v1
   with:
     fail-on: high
-    warn-on-below-threshold: true
+    warn-on-below-threshold: false
 ```
 
-The finding still appears in the sticky PR comment and in the job log as a
-warning annotation; only the build result changes. Raising `fail-on` would hide
-it instead — this keeps it visible.
+Recall at `critical` is genuinely lower (0.150 against 0.453). The trade is
+deliberate: a missed finding is still visible in the comment, while a false
+build failure is not recoverable once the team has decided the tool is noise.
+
+## Exit codes
+
+The final step re-raises the scanner's exit code (`SCAN_EXIT_CODE`), so the
+job's pass/fail comes straight from `skill-detector`:
+
+| Code | Meaning | Default (`warn-on-below-threshold: true`) | With `warn-on-below-threshold: false` |
+|---|---|---|---|
+| `0` | No findings | pass | pass |
+| `1` | Findings, all below your `fail-on` / `fail-on-axis` threshold | pass, with a `::warning::` annotation | **fail** |
+| `2` | Finding at or above threshold (worst of severity OR axis-grade) | **fail** | **fail** |
+| `3` | Tool error (bad arguments, unreadable path, internal failure) | **fail** | **fail** |
+
+### Below-threshold findings warn, they do not fail
+
+The engine means exit `1` as "look, but I am not blocking you". Until v1.7.0
+the action re-raised it anyway, so with `fail-on: high` a single MEDIUM
+finding reddened the build exactly like a breach. Since v1.7.0
+`warn-on-below-threshold` defaults to `true` and it does not.
+
+The finding still appears in the job log as a warning annotation, and on
+pull-request runs, in the sticky PR comment too; only the build result
+changes. If you want the old behaviour back:
+
+```yaml
+- uses: skilltrust/scan-action@v1
+  with:
+    warn-on-below-threshold: false
+```
+
+Raising `fail-on` would hide the finding instead — this keeps it visible.
 
 `2` and `3` are never downgraded, whatever the input is set to. `2` is a real
 threshold breach. `3` means the scan did not run at all, and a scan that could
@@ -170,8 +213,8 @@ By default the Action sends a 1KB JSON heartbeat to `https://skilltrust.app/api/
 
 ```json
 {
-  "action_version":   "1.2.0",
-  "detector_version": "v0.5.0",
+  "action_version":   "1.7.0",
+  "detector_version": "v0.7.0",
   "runner_os":        "Linux",
   "runner_arch":      "X64",
   "repo_visibility":  "public",

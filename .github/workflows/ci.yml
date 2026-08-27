@@ -38,6 +38,32 @@ jobs:
       - name: Execute delta.ps1 against fake binaries
         run: ./tests/pwsh/exec-delta-ps1.sh
 
+  # The four gate-default verification cases against the REAL engine. bats runs
+  # against a fake detector that returns whatever exit code the test hands it,
+  # so it can prove the plumbing and never that one-high-repo actually yields
+  # one HIGH finding. The harness reads the thresholds out of action.yml, so it
+  # fails if the DEFAULT regresses and not only if a script does.
+  e2e-gate-defaults:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install the engine version action.yml pins
+        run: |
+          set -euo pipefail
+          ver=$(awk '
+            $0 == "  detector-version:" { inb = 1; next }
+            inb && /^  [a-z][a-z0-9-]*:$/ { inb = 0 }
+            inb && /^    default:/ { sub(/^    default:[ \t]*/, ""); print; exit }
+          ' action.yml | tr -d "'\"")
+          if [ -z "$ver" ]; then
+            echo "could not read detector-version from action.yml" >&2
+            exit 1
+          fi
+          echo "pinned engine: $ver"
+          INPUT_DETECTOR_VERSION="$ver" ./scripts/install.sh
+      - name: The gate-default verification cases, real engine
+        run: ./tests/e2e/gate-defaults.sh
+
   smoke-clean:
     strategy:
       fail-fast: false
@@ -54,6 +80,10 @@ jobs:
           # comment steps would otherwise run without `pull-requests: write` and
           # 403 — and would race the dedicated comment jobs for the marker.
           comment: 'false'
+          # warn-on-below-threshold now defaults to true; pin it off so this job
+          # stays as strict as it was — if clean-repo ever starts producing a
+          # below-threshold finding, it should still red this job, not go green.
+          warn-on-below-threshold: 'false'
 
   smoke-malicious:
     strategy:

@@ -1,5 +1,46 @@
 # Changelog
 
+## [1.7.0] — 2026-08-27
+
+### Changed
+
+**⚠️ Behaviour change for existing users: a build that fails today may pass
+after upgrading.** `fail-on` now defaults to `critical` instead of `high`, and
+`warn-on-below-threshold` now defaults to `true` instead of `false`. If your
+workflow does not set those inputs, a HIGH finding that reddens your build on
+`v1.6.0` becomes a `::warning::` annotation on `v1.7.0` and the job goes
+green. Nothing is hidden — the finding still appears in the job log, and on
+pull-request runs, in the sticky PR comment too.
+
+**To keep the old behaviour, set both inputs explicitly:**
+
+```yaml
+- uses: skilltrust/scan-action@v1
+  with:
+    fail-on: high
+    warn-on-below-threshold: false
+```
+
+**Why.** Measured on engine `v0.7.0` against 300 benign MalSkillBench samples
+in the raw layout a repository scan actually sees, `fail-on: high` failed 75
+of them — FPR 0.250, one clean repository in four — while `critical` failed
+13, FPR 0.043. The benign pool is ClawHub's most-downloaded skills, so it is
+approximately what an ordinary repository contains. A gate that is wrong one
+time in four is switched off in week one, and that verdict is expensive to
+reverse. Recall at `critical` is lower (0.150 against 0.453) and that trade is
+deliberate: a missed finding is still in the comment, a false build failure
+spends trust that does not come back.
+
+No input or output was renamed or removed, so `@v1` keeps working — this is a
+minor release, and consumers pinned to `@v1` receive it as soon as the tag
+moves.
+
+### Added
+
+- `tests/fixtures/one-high-repo` and `tests/fixtures/critical-repo`, plus
+  `tests/e2e/gate-defaults.sh` — the gate's behaviour under its defaults is
+  now verified against the real engine in CI, not only against test fakes.
+
 ## [1.6.0] — 2026-08-26
 
 **The engine pin moves to `v0.7.0`, and that is what makes this release
