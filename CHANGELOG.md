@@ -1,5 +1,36 @@
 # Changelog
 
+## [1.9.0] — 2026-08-28
+
+### The engine pin moves to `v0.9.0` — two reasons your grade may move
+
+`detector-version` default: `v0.8.0` → `v0.9.0`.
+
+**A `skill.yaml` directory is a skill root too.** `v0.8.0` treated only
+`SKILL.md` as the marker, so a payload sitting beside a `skill.yaml`-declared
+manifest was never opened — and because `skill.yaml` is itself a recognised
+agent file, the scan had a non-empty surface and reported a confident `A`:
+"no network, no shell", about a file it never read. **A repository declaring its
+skill with `skill.yaml` and shipping scripts beside it can go from A to F.**
+Nothing about your configuration changed; the file was always there.
+
+**SD-003 stops reporting in-package `../` references as directory traversal.**
+A relative reference that, resolved against the file's own skill root, never
+leaves it is an ordinary in-package reference. This can only *remove* findings.
+Measured on a 906-sample benchmark: SD-003 findings on benign skills 242 → 226,
+on malicious 1113 → 1111, with no sample's `security`-axis grade moving in
+either direction. If your repository was failing on a `permission_hygiene`
+threshold because a script read its own `../references/` directory, it may now
+pass.
+
+Still flagged: anything that genuinely escapes the skill root, anything behind
+a variable prefix that cannot be resolved at scan time, and the `....//` and
+`..././` spellings that survive a sanitiser stripping one `../`.
+
+The engine's registry checksum is **unchanged** at `2414c32f04000b5d` — neither
+change adds, removes or re-grades a rule. Grades still move, because both
+change what gets scanned and what counts as a finding.
+
 ## [1.8.0] — 2026-08-27
 
 ### The engine pin moves to `v0.8.0` — your grade may move with it

@@ -77,8 +77,11 @@ EOF
   # Done-when in the spec: the description must state WHY, with the numbers.
   # If the measurement is ever redone, this case is meant to be updated with
   # it — not deleted.
+  # Re-measured on engine v0.9.0 (was 0.370 on v0.8.0): the SD-003
+  # in-package-`../` fix removed one benign false positive at `high`.
+  # `critical`, the actual default, is unchanged.
   desc="$(input_description fail-on)"
-  [[ "$desc" == *"0.370"* ]]
+  [[ "$desc" == *"0.367"* ]]
   [[ "$desc" == *"0.067"* ]]
 }
 

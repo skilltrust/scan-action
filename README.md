@@ -71,7 +71,7 @@ below that is reported and does not block the merge — see
 | `comment` | `true` | Post sticky PR comment |
 | `warn-on-below-threshold` | `true` | Turn exit `1` (findings, all below threshold) into a warning annotation instead of a build failure. See **Exit codes**. |
 | `fail-on-no-agent-surface` | `false` | Fail the build when the scan found no agent configuration files at all (default = warn only). See **When nothing was checked**. |
-| `detector-version` | `v0.8.0` | Pin a specific `skill-detector` release |
+| `detector-version` | `v0.9.0` | Pin a specific `skill-detector` release |
 | `telemetry` | `true` | Send anonymous install heartbeat. See **Telemetry** below. |
 | `github-token` | `${{ github.token }}` | Token used to post PR comments |
 
@@ -90,15 +90,19 @@ By default, only a **CRITICAL** finding does. HIGH, MEDIUM, LOW and INFO
 findings are reported — in the sticky PR comment and as a `::warning::`
 annotation — and the job stays green.
 
-That default is a measurement, not a preference. On engine `v0.8.0`, against
+That default is a measurement, not a preference. On engine `v0.9.0`, against
 300 benign samples from the MalSkillBench corpus in the raw layout a
 repository scan actually sees:
 
 | `fail-on` | Benign repos failed, of 300 | Malicious caught, of 300 | Precision | FPR |
 |---|---|---|---|---|
-| `high` (the default before v1.7.0) | 111 | 198 | 0.641 | **0.370** |
-| `medium` | 124 | 219 | 0.638 | 0.413 |
+| `high` (the default before v1.7.0) | 110 | 198 | 0.643 | **0.367** |
+| `medium` | 123 | 219 | 0.640 | 0.410 |
 | `critical` (**the default**) | 20 | 70 | 0.778 | **0.067** |
+
+Re-measured on `v0.9.0`. The `critical` row — the actual default — is
+unchanged from `v0.8.0`; the other two each lost one false positive to the
+SD-003 fix.
 
 The benign pool is ClawHub's most-downloaded skills, so those are close to
 what an ordinary repository contains. At `fail-on: high` one clean repository
@@ -213,8 +217,8 @@ By default the Action sends a 1KB JSON heartbeat to `https://skilltrust.app/api/
 
 ```json
 {
-  "action_version":   "1.8.0",
-  "detector_version": "v0.8.0",
+  "action_version":   "1.9.0",
+  "detector_version": "v0.9.0",
   "runner_os":        "Linux",
   "runner_arch":      "X64",
   "repo_visibility":  "public",
