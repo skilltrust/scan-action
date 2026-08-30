@@ -1,5 +1,33 @@
 # Changelog
 
+## [1.10.0] — 2026-08-30
+
+### The engine pin moves to `v0.10.0` — a credential path spelled `$HOME/…` is now found
+
+`detector-version` default: `v0.9.0` → `v0.10.0`.
+
+**Your grade may move.** The engine's credential-path rule (SD-004) held its
+paths written only one way, with a leading `~/`. A skill that read
+`$HOME/.ssh/id_rsa` or `${HOME}/.aws/credentials` therefore produced no finding
+at all, while the identical read written `~/.ssh/id_rsa` graded
+`permission_hygiene F`. `v0.10.0` matches all three spellings — `~/`, `$HOME/`,
+`${HOME}/` — so a repository that was quiet on this can now report a CRITICAL
+finding and fail the default gate. Nothing about the repository changed: the
+finding was always true and the engine could not see it.
+
+Windows spellings (`$env:USERPROFILE\`, `%USERPROFILE%\`) were measured on the
+full 7944-sample corpus and deliberately **not** added — neither separates the
+malicious population, and their matched lines are not credential access.
+
+**The measured false-positive rate for this action's default gate does not
+move.** On the 906-sample benchmark the engine's output is identical in every
+measured field before and after: no sample in that pool spells a credential
+path through the variable. The `fail-on: critical` FPR of 0.067 in `action.yml`
+and `README.md` stands, re-verified rather than re-asserted.
+
+The engine's ruleset checksum is unchanged at `2414c32f04000b5d` — this is
+match-time logic, not a new rule.
+
 ## [1.9.0] — 2026-08-28
 
 ### The engine pin moves to `v0.9.0` — two reasons your grade may move

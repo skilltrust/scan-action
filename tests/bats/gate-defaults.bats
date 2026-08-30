@@ -80,6 +80,10 @@ EOF
   # Re-measured on engine v0.9.0 (was 0.370 on v0.8.0): the SD-003
   # in-package-`../` fix removed one benign false positive at `high`.
   # `critical`, the actual default, is unchanged.
+  # Re-verified on v0.10.0 and unchanged: that release widens SD-004 to
+  # `$HOME/`-spelled credential paths, and the 906-sample run is identical
+  # in every measured field before and after — no sample in this pool
+  # spells a credential path that way.
   desc="$(input_description fail-on)"
   [[ "$desc" == *"0.367"* ]]
   [[ "$desc" == *"0.067"* ]]
