@@ -23,8 +23,8 @@ if [ "${INPUT_IS_FORK_PR:-false}" = "true" ]; then
   exit 0
 fi
 
-# C9 — the Action yields to the App. The two sticky markers differ by design
-# (ADR-0004: the Action's marker is a wire contract and cannot change), so a
+# The Action yields to the App. The two sticky markers differ by design — the
+# Action's marker is a wire contract and cannot change — so a
 # repository running both would otherwise carry two grade comments in every
 # pull request. The App is the authoritative one: it scans on our servers, has
 # history and can triage.

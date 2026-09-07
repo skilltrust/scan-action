@@ -14,8 +14,9 @@ if ($env:INPUT_IS_FORK_PR -eq "true") {
   exit 0
 }
 
-# C9 — the Action yields to the App. See report.sh for the full reasoning;
-# ADR-0002 requires this branch to exist in both scripts or Windows diverges.
+# The Action yields to the App. See report.sh for the full reasoning; the
+# script-pair rule requires this branch to exist in both halves, or Windows
+# diverges silently.
 $appMarker = "<!-- skilltrust:bot:v1 -->"
 $appJq = '[.[] | select(.body | startswith("' + $appMarker + '"))][0].id'
 $appComment = gh api "repos/$repo/issues/$pr/comments" --jq $appJq

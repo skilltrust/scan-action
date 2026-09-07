@@ -1,15 +1,14 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Verification cases 2-4 of docs/specs/2026-08-27-gate-defaults-design.md,
-# executed against the REAL engine and the REAL fixtures.
+# Gate-defaults verification cases 2-4, executed against the REAL engine and
+# the REAL fixtures.
 #
 # bats runs against tests/bats/fixtures/fake-detector.sh, which returns
 # whatever exit code the test hands it. It can prove the plumbing and never
 # that tests/fixtures/one-high-repo yields exactly one HIGH finding, or that
 # critical-repo yields a CRITICAL one. If the engine's severity assignments
-# move, this file is what goes red -- STATUS.md has carried that risk as
-# known debt since v1.5.0.
+# move, this file is what goes red.
 #
 # The thresholds are READ OUT OF action.yml rather than written down here, so
 # this fails if the default regresses, not just if the scripts do.

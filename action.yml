@@ -187,7 +187,8 @@ runs:
       if: inputs.telemetry == 'true' && runner.os != 'Windows'
       env:
         INPUT_SCAN_JSON:        ${{ steps.scan.outputs.scan-json-path }}
-        # Keep in sync with the release tag — see docs/runbooks/release.md
+        # Not derived from the tag. Bump it with every release, together with
+        # the CHANGELOG entry — see the Release section of AGENTS.md.
         INPUT_ACTION_VERSION:   1.10.0
         INPUT_DETECTOR_VERSION: ${{ inputs.detector-version }}
         INPUT_DELTA_ENABLED:    ${{ inputs.delta }}
@@ -198,7 +199,8 @@ runs:
       if: inputs.telemetry == 'true' && runner.os == 'Windows'
       env:
         INPUT_SCAN_JSON:        ${{ steps.scan-win.outputs.scan-json-path }}
-        # Keep in sync with the release tag — see docs/runbooks/release.md
+        # Not derived from the tag. Bump it with every release, together with
+        # the CHANGELOG entry — see the Release section of AGENTS.md.
         INPUT_ACTION_VERSION:   1.10.0
         INPUT_DETECTOR_VERSION: ${{ inputs.detector-version }}
         INPUT_DELTA_ENABLED:    ${{ inputs.delta }}

@@ -219,7 +219,7 @@ By default the Action sends a 1KB JSON heartbeat to `https://skilltrust.app/api/
 
 ```json
 {
-  "action_version":   "1.9.0",
+  "action_version":   "1.10.0",
   "detector_version": "v0.10.0",
   "runner_os":        "Linux",
   "runner_arch":      "X64",

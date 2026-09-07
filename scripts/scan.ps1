@@ -1,7 +1,7 @@
 $ErrorActionPreference = "Stop"
 
 $path        = if ($env:INPUT_PATH)       { $env:INPUT_PATH }       else { "." }
-# Mirrors action.yml's `fail-on` default — keep in step with scan.sh (ADR-0002).
+# Mirrors action.yml's `fail-on` default — keep in step with scan.sh.
 $failOn      = if ($env:INPUT_FAIL_ON)    { $env:INPUT_FAIL_ON }    else { "critical" }
 $strictMCP   = $env:INPUT_STRICT_MCP -eq "true"
 $scanAll     = $env:INPUT_SCAN_ALL   -eq "true"
