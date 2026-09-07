@@ -143,7 +143,7 @@ EOF
 
 @test "scan.ps1: the PowerShell fallback matches action.yml, which bats cannot execute" {
   # bats never runs pwsh, and parse-all-ps1.sh only parses — a wrong literal
-  # here is invisible to both. ADR-0002's "change one, change both" needs a
+  # here is invisible to both. The "change one, change both" pair rule needs a
   # check that does not depend on executing the .ps1 half. Bare assignment
   # (see the scan.sh case above) so a broken input_default fails loudly
   # rather than being swallowed under `set -e`.

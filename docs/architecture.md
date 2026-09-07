@@ -50,13 +50,25 @@ failing scan still gets its comment posted and its telemetry sent. Delete step
 
 ### Step 1 — install
 
-Maps `RUNNER_OS` and `RUNNER_ARCH` to the release asset's OS/arch pair
-(`Linux`→`linux`, `macOS`→`darwin`; `X64`→`amd64`, `ARM64`→`arm64`) and refuses
-to continue on anything else. Downloads the tarball for
-`detector-version` and the release's `checksums.txt` from the engine's GitHub
-releases, **verifies the SHA-256 before extracting**, then appends the
-extraction directory to `$GITHUB_PATH` so later steps find `skill-detector` on
-`PATH`.
+Resolves the release asset for `detector-version`, downloads it together with
+the release's `checksums.txt` from the engine's GitHub releases, **verifies the
+SHA-256 before extracting**, then appends the extraction directory to
+`$GITHUB_PATH` so later steps find `skill-detector` on `PATH`.
+
+The two halves resolve the asset differently, because each already knows its
+own platform:
+
+| | `install.sh` | `install.ps1` |
+|---|---|---|
+| OS | maps `RUNNER_OS`: `Linux`→`linux`, `macOS`→`darwin`; throws on anything else | hardcodes `windows` — it only runs on Windows |
+| Arch | maps `RUNNER_ARCH`: `X64`→`amd64`, `ARM64`→`arm64`; throws on anything else | the same mapping, and the same refusal |
+| Asset | `skill-detector_<version>_<os>_<arch>.tar.gz` | `skill-detector_<version>_windows_<arch>.zip` |
+| Verify | `sha256sum --check`, falling back to `shasum -a 256` | `Get-FileHash -Algorithm SHA256`, compared against the line for this asset; throws if the asset is absent from `checksums.txt` |
+| Extract | `tar -xzf` | `Expand-Archive` |
+
+Both write the extraction directory to `$GITHUB_PATH` and record it in
+`SCAN_ACTION_DETECTOR_DIR`. The asset name embeds the version without its
+leading `v`, on both sides.
 
 ### Step 2 — scan
 
@@ -195,9 +207,10 @@ that in a build nobody configured, only a CRITICAL finding fails. Everything
 below that is reported — in the job log as a `::warning::` annotation, and on a
 pull request in the sticky comment — and the job stays green.
 
-Each default is written in three places that must agree:
+Between them the two defaults are written across three files that must agree —
+`action.yml`, `scan.{sh,ps1}` and `propagate-exit.sh`:
 
-| Default | Places |
+| Default | Where it is written |
 |---|---|
 | `fail-on` | `action.yml`, and the `FAIL_ON` fallback in each half of `scan.{sh,ps1}` |
 | `warn-on-below-threshold` | `action.yml`, and the `INPUT_WARN_ON_BELOW_THRESHOLD` fallback in `propagate-exit.sh` |
@@ -243,7 +256,11 @@ bats runs against a fake detector, so it cannot prove that a given fixture
 yields a finding of a given severity. It reads the thresholds out of
 `action.yml`, so a changed default fails it and not only a changed script, and
 it aborts unless the `skill-detector` on `PATH` matches the pinned
-`detector-version`.
+`detector-version` — otherwise a mismatched engine would give a confident wrong
+answer. Setting `SKILL_DETECTOR_VERSION_CHECK=off` skips that check and is the
+escape hatch for a local source build, which carries the pinned ruleset but
+reports a development version string rather than the release tag. It is not
+meant for CI, and the harness says so loudly when it is set.
 
 `tests/pwsh/` — PowerShell-side harnesses. Each picks its runtime at startup —
 `pwsh` on `PATH` if present, otherwise a PowerShell container — and prints

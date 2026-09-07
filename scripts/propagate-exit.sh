@@ -5,7 +5,7 @@ set -euo pipefail
 # into SCAN_EXIT_CODE, so the intervening comment/delta/telemetry steps got to
 # run first.
 #
-# NOT a script pair, deliberately. ADR-0002's "change one, change both" rule
+# NOT a script pair, deliberately. The "change one, change both" pair rule
 # covers scripts selected by `runner.os`; this step is `shell: bash` on every
 # OS and reaches Windows through Git Bash, exactly like the inline `run:` it
 # replaced. Precedent: `run-tests.sh` is bash-only too. Do not add a `.ps1`.
@@ -25,7 +25,7 @@ set -euo pipefail
 #                                    (e.g. a push build) there is no comment to point at, and
 #                                    the annotation points at the job log and scan JSON instead.
 #
-# Engine exit codes (skill-detector ADR-0006):
+# Engine exit codes, as skill-detector defines them:
 #   0  no findings
 #   1  findings, all below the fail-on / fail-on-axis threshold
 #   2  a finding at or above the threshold
@@ -44,7 +44,7 @@ CODE="${SCAN_EXIT_CODE:-0}"
 # annotation and in the PR comment. Failing by default was rejected: a repo
 # that genuinely has no agent files would go red permanently with no fix
 # available, and the first thing anyone does with a permanent red is delete
-# the gate. Teams for whom this is a real gate opt in. ADR-0020 (skilltrust).
+# the gate. Teams for whom this is a real gate opt in.
 #
 # Guarded on CODE = 0: no agent surface means no findings, which today only
 # ever means exit 0. But a tool error (3) or a real breach (2) must never be

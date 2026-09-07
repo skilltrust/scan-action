@@ -31,6 +31,17 @@ downloads. It defaults to a version pinned in `action.yml`, so a given Action
 tag always installs the same engine and a repository's grade does not shift
 underneath it when the engine releases.
 
+### Floating `v1`
+
+The tag consumers pin: `skilltrust/scan-action@v1`. It is not a release; it is
+a pointer. `.github/workflows/release.yml` force-moves it to each new `v1.*`
+tag, so a user pinning `@v1` picks up fixes without editing their workflow.
+The immutable `v1.x.y` tags stay for anyone who wants an exact pin, and a
+commit SHA is the strictest pin available.
+
+Because `v1` moves, it may only move across changes that are compatible for
+someone who never looked: a renamed or removed input or output needs a `v2`.
+
 ### Fork degradation
 
 A pull request from a fork gets a read-only `GITHUB_TOKEN`, so posting a
@@ -50,17 +61,6 @@ does not block the merge.
 Each is written in more than one place — `action.yml` plus a fallback inside
 the script that consumes it — and `action.yml` is the source of truth.
 `tests/bats/gate-defaults.bats` reads `action.yml` and pins the copies to it.
-
-### Floating `v1`
-
-The tag consumers pin: `skilltrust/scan-action@v1`. It is not a release; it is
-a pointer. `.github/workflows/release.yml` force-moves it to each new `v1.*`
-tag, so a user pinning `@v1` picks up fixes without editing their workflow.
-The immutable `v1.x.y` tags stay for anyone who wants an exact pin, and a
-commit SHA is the strictest pin available.
-
-Because `v1` moves, it may only move across changes that are compatible for
-someone who never looked: a renamed or removed input or output needs a `v2`.
 
 ### No agent surface
 
