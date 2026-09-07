@@ -95,13 +95,6 @@ The base scan's exit code is discarded. `--fail-on` and `--fail-on-axis` are
 therefore deliberately not threaded into it: they set an exit code and nothing
 else, so threading them would change nothing.
 
-`delta.{sh,ps1}` do read `INPUT_STRICT_MCP` and `INPUT_SCAN_ALL` and append
-the matching flags when either is `'true'`. `action.yml` currently forwards
-three variables to this step — `INPUT_BASE_REF`, `INPUT_HEAD_SCAN_JSON` and
-`INPUT_PATH` — so under the composite action the base scan runs without those
-two flags. `tests/bats/delta.bats` pins the script-level behaviour in both
-directions, set and unset.
-
 ### Steps 4 and 5 — render and post
 
 `render-comment` fills `templates/comment.md.tmpl` from the scan JSON, and
