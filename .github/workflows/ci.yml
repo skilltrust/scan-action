@@ -271,6 +271,7 @@ jobs:
           # comment steps would otherwise run without `pull-requests: write` and
           # 403 — and would race the dedicated comment jobs for the marker.
           comment: 'false'
+          telemetry: 'false'
           # warn-on-below-threshold now defaults to true; pin it off so this job
           # stays as strict as it was — if clean-repo ever starts producing a
           # below-threshold finding, it should still red this job, not go green.
@@ -293,6 +294,7 @@ jobs:
           # Must be off, or this job fails on a comment 403 instead of on the
           # scan's exit code — a false pass that stops testing what it claims to.
           comment: 'false'
+          telemetry: 'false'
       - name: Assert action failed
         if: steps.action.outcome != 'failure'
         run: |
@@ -312,6 +314,7 @@ jobs:
           path: tests/fixtures/malicious-repo
           fail-on: high
           comment: 'true'
+          telemetry: 'false'
         continue-on-error: true
       - name: Assert sticky comment exists
         env:
@@ -347,6 +350,7 @@ jobs:
           fail-on: high
           delta: 'true'
           comment: 'true'
+          telemetry: 'false'
       - name: Assert marker comment posted
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -430,6 +434,7 @@ jobs:
           path: tests/fixtures/clean-repo
           comment: 'true'
           delta: 'false'
+          telemetry: 'false'
 
       - name: Assert the Windows comment steps actually rewrote the comment
         shell: bash
