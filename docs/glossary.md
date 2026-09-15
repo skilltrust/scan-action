@@ -24,6 +24,10 @@ It **doubles runtime**, because it means two full scans. Off by default. It
 also needs the base ref to be fetchable, which is why the documented workflow
 checks out with `fetch-depth: 0`.
 
+Comparison is presentation only. The whole head result still gates. A fetch,
+worktree, base scan/result, or delta failure is shown as **delta unavailable**,
+never as zero new findings, and does not alter the validated head result.
+
 ### Detector version
 
 The `detector-version` input: which `skill-detector` release the install step
@@ -73,6 +77,13 @@ sticky comment both state that nothing was checked rather than showing a
 trust score. The build still passes by default, because a repository that
 genuinely has no agent configuration would otherwise be permanently red with
 no fix available. `fail-on-no-agent-surface: true` opts into gating on it.
+
+### Report-only
+
+`report-only: true` makes validated finding outcomes nonblocking. Engine exits
+`1` and `2` become Action success while their raw JSON remains available.
+Operational failures—including missing or invalid results—remain failures.
+The default is `false`; legacy gate defaults remain unchanged.
 
 ### `SCAN_EXIT_CODE`
 

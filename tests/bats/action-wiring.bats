@@ -1,0 +1,39 @@
+#!/usr/bin/env bats
+
+ACTION="$BATS_TEST_DIRNAME/../../action.yml"
+
+@test "action.yml: report-only is a string boolean defaulting false" {
+  awk '/^  report-only:/{seen=1} seen && /default:/{print; exit}' "$ACTION" | grep -q "default: 'false'"
+}
+
+@test "action.yml: all public outputs select the POSIX or Windows scan" {
+  for name in grade scan-json-path findings-count no-agent-surface; do
+    value="$(awk -v name="$name" '$0 == "  " name ":" {seen=1} seen && /value:/ {print; exit}' "$ACTION")"
+    [[ "$value" == *"steps.scan.outputs.$name || steps.scan-win.outputs.$name"* ]]
+  done
+}
+
+@test "action.yml: both delta branches receive only scope controls from inputs" {
+  [ "$(grep -c 'INPUT_STRICT_MCP:.*inputs.strict-mcp' "$ACTION")" -eq 4 ]
+  [ "$(grep -c 'INPUT_SCAN_ALL:.*inputs.scan-all' "$ACTION")" -eq 4 ]
+  delta_blocks="$(sed -n '/id: delta/,/scripts\/delta.ps1/p' "$ACTION")"
+  [[ "$delta_blocks" != *"INPUT_FAIL_ON"* ]]
+  [[ "$delta_blocks" != *"INPUT_FAIL_ON_AXIS"* ]]
+}
+
+@test "action.yml: trusted-result guard protects every result consumer" {
+  [ "$(grep -c "result-valid == 'true'" "$ACTION")" -eq 8 ]
+  ! grep -q 'continue-on-error' "$ACTION"
+}
+
+@test "scripts: scan and delta do not blanket-swallow failures" {
+  ! grep -R -nE '\|\|[[:space:]]+true' "$BATS_TEST_DIRNAME/../../scripts/scan.sh" \
+    "$BATS_TEST_DIRNAME/../../scripts/scan.ps1" "$BATS_TEST_DIRNAME/../../scripts/delta.sh" \
+    "$BATS_TEST_DIRNAME/../../scripts/delta.ps1"
+}
+
+@test "delta scripts resolve the fetched commit instead of an origin ref" {
+  grep -q "FETCH_HEAD" "$BATS_TEST_DIRNAME/../../scripts/delta.sh"
+  grep -q "FETCH_HEAD" "$BATS_TEST_DIRNAME/../../scripts/delta.ps1"
+  ! grep -q 'origin/\$BASE_REF' "$BATS_TEST_DIRNAME/../../scripts/delta.sh"
+}

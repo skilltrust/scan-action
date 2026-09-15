@@ -9,7 +9,7 @@ case "${1:-}" in
     exit 0
     ;;
   scan)
-    echo "${FAKE_DETECTOR_JSON:-$_default_json}"
+    echo "${FAKE_DETECTOR_JSON-$_default_json}"
     exit "${FAKE_DETECTOR_EXIT:-0}"
     ;;
   *)

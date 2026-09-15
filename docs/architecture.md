@@ -77,23 +77,23 @@ Builds the engine's argument list from the inputs — always
 argument per comma-separated spec, plus `--strict-mcp` and `--scan-all` when
 those inputs are `'true'` — and writes the result to `$RUNNER_TEMP/scan.json`.
 
-The engine's exit code is captured, not raised. The step reads `grade`,
-`findings-count` and `no-agent-surface` back out of the JSON with `jq`, so
-`jq` must be present for those three outputs to be set; `scan-json-path` is
-set regardless.
+The engine's exit code is captured before parsing. Exits `0`/`1`/`2` require a
+valid result: a findings array and either all four graded axes or the explicit
+no-agent-surface shape. Exit/result disagreement is invalid. Valid raw JSON is
+not rewritten. Tool/nonstandard exits and invalid results publish no public
+success-shaped outputs and remain deferred failures.
 
-`grade` is the worst axis, computed as the lexicographically last grade letter
-across `.axes` — `A` through `F` sort in severity order.
+`grade` is the raw `.axes.quality.grade`; `findings-count` is the validated
+array length. No-agent-surface publishes an empty grade.
 
 ### Step 3 — delta
 
-Fetches the base ref at depth 1, adds a detached worktree for it under
-`$RUNNER_TEMP`, scans that tree, and runs `skill-detector delta base head` to
-produce `$RUNNER_TEMP/delta.json`.
-
-The base scan's exit code is discarded. `--fail-on` and `--fail-on-axis` are
-therefore deliberately not threaded into it: they set an exit code and nothing
-else, so threading them would change nothing.
+Fetches the base ref at depth 1, resolves `FETCH_HEAD`, adds a detached
+worktree for that exact commit, and scans the matching `path`, `strict-mcp`,
+and `scan-all` scope. Severity and axis thresholds remain head policy only.
+Base exits `0`/`1`/`2` are accepted only with valid JSON. Delta is published
+only after schema validation; stale values are cleared first. Any comparison
+failure warns and leaves the head JSON and gate unchanged. Cleanup always runs.
 
 ### Steps 4 and 5 — render and post
 
@@ -127,14 +127,16 @@ immediately if the scan JSON is missing.
 
 ### Step 7 — propagate exit
 
-Re-raises `SCAN_EXIT_CODE` unchanged, with two exceptions, in this order:
+Requires and re-raises `SCAN_EXIT_CODE`, with these policy exceptions:
 
 1. **No agent surface.** If the code is `0` and `no-agent-surface` is `true`,
    emits a `::warning::` saying nothing was checked, then exits `2` if
    `fail-on-no-agent-surface` is `'true'` and `0` otherwise. Guarded on code
    `0`: a breach (`2`) or a tool error (`3`) must never be reinterpreted as
    "nothing was checked".
-2. **Below threshold.** If the code is `1` and `warn-on-below-threshold` is
+2. **Report-only.** If enabled, validated finding exits `1` and `2` warn and
+   succeed. Operational and unknown exits remain failures.
+3. **Below threshold.** If the code is `1` and `warn-on-below-threshold` is
    `'true'` (the default), emits a `::warning::` naming the finding count and
    grade, and exits `0`.
 
@@ -162,7 +164,7 @@ values are:
 |---|---|---|---|
 | extraction dir | `$GITHUB_PATH` | install | scan, delta — puts `skill-detector` on `PATH` |
 | `SCAN_ACTION_DETECTOR_DIR` | `$GITHUB_ENV` | install | nothing; recorded for debugging |
-| `scan-json-path` | step output | scan | delta (`INPUT_HEAD_SCAN_JSON`), render (`INPUT_SCAN_JSON`), telemetry (`INPUT_SCAN_JSON`), and callers |
+| `scan-json-path` | step output | validated scan | delta (`INPUT_HEAD_SCAN_JSON`), render (`INPUT_SCAN_JSON`), telemetry (`INPUT_SCAN_JSON`), and callers |
 | `grade`, `findings-count`, `no-agent-surface` | step outputs | scan | propagate-exit (`INPUT_GRADE`, `INPUT_FINDINGS_COUNT`, `INPUT_NO_AGENT_SURFACE`), and callers |
 | `SCAN_EXIT_CODE` | `$GITHUB_ENV` | scan | propagate-exit, read straight from the environment |
 | `SCAN_ACTION_DELTA_JSON` | `$GITHUB_ENV` | delta | render (`INPUT_DELTA_JSON`) |
@@ -173,8 +175,9 @@ Two details this table hides:
 
 - **The Windows branches use different step IDs.** POSIX steps read
   `steps.scan.outputs.*`; Windows steps read `steps.scan-win.outputs.*`. Two
-  IDs for the same logical step. `action.yml`'s outputs and the propagate-exit
-  step bridge them with `a || b`. `SCAN_ACTION_DELTA_JSON` needs no bridging,
+  IDs for the same logical step. All four Action outputs and propagate-exit
+  bridge them with `a || b`. Invalid branches publish no success values.
+  `SCAN_ACTION_DELTA_JSON` needs no bridging,
   because it travels through `$GITHUB_ENV` rather than a step output.
 - **The rendered comment is the one handoff that is not a variable.** Both
   halves of render and report independently compute `$RUNNER_TEMP/comment.md`.
@@ -185,7 +188,7 @@ Two details this table hides:
 
 Inputs: `path`, `fail-on`, `fail-on-axis`, `strict-mcp`, `scan-all`,
 `comment`, `warn-on-below-threshold`, `fail-on-no-agent-surface`, `delta`,
-`telemetry`, `github-token`, `detector-version`.
+`report-only`, `telemetry`, `github-token`, `detector-version`.
 
 Outputs: `grade`, `scan-json-path`, `findings-count`, `no-agent-surface`.
 
@@ -237,7 +240,7 @@ from the tag, so it has to be moved by hand at release time.
 
 ## Testing
 
-`tests/bats/` — nine suites driven by fakes in `tests/bats/fixtures/`
+`tests/bats/` — suites driven by fakes in `tests/bats/fixtures/`
 (`fake-detector.sh`, `fake-gh.sh`), so they never reach the network or GitHub.
 Run with `./scripts/run-tests.sh`, which clones a pinned `bats-core` into
 `.bats-tmp/` on first use.
@@ -267,6 +270,9 @@ which it chose.
   scratch path deliberately contains a space — that is what catches wrong
   native argument splitting — and the harness refuses to run if the space is
   ever lost.
+- `exec-scan-ps1.sh` executes clean, findings, no-surface, tool-error,
+  malformed-result and repeated scan cases. It checks difficult native paths,
+  exact raw JSON bytes, deferred exits and all public step outputs.
 
 `.github/workflows/ci.yml` has nine jobs: `bats`, `pwsh-parse`,
 `pwsh-exec-delta`, `e2e-gate-defaults`, and five smoke jobs that run the real

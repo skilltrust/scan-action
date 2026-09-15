@@ -8,8 +8,9 @@ permission problems, then posts a sticky pull-request comment with a four-axis
 trust score and fails the build on CRITICAL findings by default — and on
 whatever thresholds you set.
 
-Everything runs inside your runner. Nothing leaves it, on public and private
-repositories alike, and that is permanent.
+Scanning runs inside your runner. The Action downloads the pinned detector,
+can post its configured GitHub comment, and sends a default-on anonymous
+heartbeat; see **Telemetry**.
 
 ## This, or the GitHub App
 
@@ -71,6 +72,7 @@ below that is reported and does not block the merge — see
 | `comment` | `true` | Post sticky PR comment |
 | `warn-on-below-threshold` | `true` | Turn exit `1` (findings, all below threshold) into a warning annotation instead of a build failure. See **Exit codes**. |
 | `fail-on-no-agent-surface` | `false` | Fail the build when the scan found no agent configuration files at all (default = warn only). See **When nothing was checked**. |
+| `report-only` | `false` | Keep findings visible but do not fail on finding exits `1`/`2`. Tool, input and result failures still fail. |
 | `detector-version` | `v0.10.0` | Pin a specific `skill-detector` release |
 | `telemetry` | `true` | Send anonymous install heartbeat. See **Telemetry** below. |
 | `github-token` | `${{ github.token }}` | Token used to post PR comments |
@@ -79,8 +81,8 @@ below that is reported and does not block the merge — see
 
 | Output | Description |
 |---|---|
-| `grade` | Overall trust grade (worst axis): `A`/`B`/`C`/`D`/`F` |
-| `scan-json-path` | Absolute path to scan result JSON in the runner |
+| `grade` | Raw Quality-axis grade: `A`/`B`/`C`/`D`/`F`; empty for no surface or failure |
+| `scan-json-path` | Absolute path to validated, unmodified scan result JSON; empty on failure |
 | `findings-count` | Total finding count |
 | `no-agent-surface` | `true` when the scan found no agent configuration files — no grade was produced |
 
@@ -162,6 +164,11 @@ Raising `fail-on` would hide the finding instead — this keeps it visible.
 threshold breach. `3` means the scan did not run at all, and a scan that could
 not run is not a passing scan — which is also why you should not reach for
 `continue-on-error` or `|| true` to get warn-not-fail behavior.
+
+For nonblocking onboarding, set `report-only: true`. It turns finding exits
+`1` and `2` into success while retaining the validated JSON and findings. It
+does not hide install, input, tool, or result failures. `fail-on-no-agent-surface`
+remains independent and can still gate an empty scope.
 
 ### When nothing was checked
 

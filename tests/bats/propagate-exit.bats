@@ -8,6 +8,7 @@
 # 2-with-the-input-on: a tool error means the scan never ran, and a breach is
 # a breach. Both must still be non-zero with the input at its most permissive.
 
+bats_require_minimum_version 1.5.0
 load helpers
 
 SCRIPT() { echo "$BATS_TEST_DIRNAME/../../scripts/propagate-exit.sh"; }
@@ -91,11 +92,62 @@ run_propagate() {
 
 # --- edges ------------------------------------------------------------------
 
-@test "propagate-exit.sh: unset SCAN_EXIT_CODE exits 0" {
-  # The scan step is skipped on the OS branch that did not run; the inline
-  # version this script replaced defaulted to 0 and so does it.
+@test "propagate-exit.sh: unset SCAN_EXIT_CODE is a result failure" {
   run_propagate "" true
+  [ "$status" -eq 3 ]
+  [[ "$output" == *"did not publish"* ]]
+}
+
+@test "report-only downgrades findings exits 1 and 2, but not errors" {
+  for code in 1 2; do
+    SCAN_EXIT_CODE="$code" INPUT_REPORT_ONLY=true run "$(SCRIPT)"
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"findings retained"* ]]
+  done
+  for code in 3 42 127; do
+    if [ "$code" -eq 127 ]; then
+      SCAN_EXIT_CODE="$code" INPUT_REPORT_ONLY=true run -127 "$(SCRIPT)"
+    else
+      SCAN_EXIT_CODE="$code" INPUT_REPORT_ONLY=true run "$(SCRIPT)"
+    fi
+    [ "$status" -eq "$code" ]
+  done
+}
+
+@test "report-only false preserves legacy 0/1/2 policy" {
+  SCAN_EXIT_CODE=0 INPUT_REPORT_ONLY=false run "$(SCRIPT)"
   [ "$status" -eq 0 ]
+  SCAN_EXIT_CODE=1 INPUT_REPORT_ONLY=false INPUT_WARN_ON_BELOW_THRESHOLD=false run "$(SCRIPT)"
+  [ "$status" -eq 1 ]
+  SCAN_EXIT_CODE=2 INPUT_REPORT_ONLY=false run "$(SCRIPT)"
+  [ "$status" -eq 2 ]
+}
+
+@test "complete report-only truth table preserves 0/1/2/3/42/127 contracts" {
+  for row in \
+    'false 0 0' 'false 1 1' 'false 2 2' 'false 3 3' 'false 42 42' 'false 127 127' \
+    'true 0 0' 'true 1 0' 'true 2 0' 'true 3 3' 'true 42 42' 'true 127 127'; do
+    read -r mode code expected <<< "$row"
+    if [ "$expected" -eq 127 ]; then
+      run -127 env SCAN_EXIT_CODE="$code" INPUT_REPORT_ONLY="$mode" \
+        INPUT_WARN_ON_BELOW_THRESHOLD=false "$(SCRIPT)"
+    else
+      run env SCAN_EXIT_CODE="$code" INPUT_REPORT_ONLY="$mode" \
+        INPUT_WARN_ON_BELOW_THRESHOLD=false "$(SCRIPT)"
+    fi
+    [ "$status" -eq "$expected" ]
+  done
+}
+
+@test "fail-on-no-agent-surface is independent of report-only" {
+  SCAN_EXIT_CODE=0 INPUT_NO_AGENT_SURFACE=true INPUT_REPORT_ONLY=true \
+    INPUT_FAIL_ON_NO_AGENT_SURFACE=true run "$(SCRIPT)"
+  [ "$status" -eq 2 ]
+}
+
+@test "invalid string boolean is an input failure" {
+  SCAN_EXIT_CODE=2 INPUT_REPORT_ONLY=yes run "$(SCRIPT)"
+  [ "$status" -eq 3 ]
 }
 
 @test "propagate-exit.sh: an unknown future exit code passes through unchanged" {

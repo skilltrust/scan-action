@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+- Add `report-only: false`. When enabled, finding exits `1` and `2` report but
+  do not block; input, tool, install, integrity, and invalid-result failures do.
+- Validate scan and delta JSON before publishing outputs. Public outputs now
+  select the runner's actual scan branch and `grade` carries the raw Quality
+  axis. Invalid scans publish no success-shaped outputs.
+- Delta now scans the fetched commit with the head's scope controls, always
+  cleans its worktree, and warns without changing the head gate when comparison
+  is unavailable.
+
 ## [1.10.0] — 2026-08-30
 
 ### The engine pin moves to `v0.10.0` — a credential path spelled `$HOME/…` is now found
