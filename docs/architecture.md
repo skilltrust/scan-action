@@ -35,7 +35,7 @@ POSIX branch gated on `runner.os != 'Windows'` and a Windows branch gated on
 | 1 | Install | always | `install.{sh,ps1}` |
 | 2 | Scan | always | `scan.{sh,ps1}` |
 | 3 | Compute delta | `delta == 'true'` **and** the event is `pull_request` | `delta.{sh,ps1}` |
-| 4 | Render comment | the event is `pull_request` **and** `comment == 'true'` | `render-comment.{sh,ps1}` |
+| 4 | Render report | a validated scan completed on `push` or `pull_request` | `render-comment.{sh,ps1}` + shared `render.py` |
 | 5 | Post sticky comment | the event is `pull_request` **and** `comment == 'true'` | `report.{sh,ps1}` |
 | 6 | Send telemetry | `telemetry == 'true'` | `telemetry.{sh,ps1}` |
 | 7 | Propagate exit code | always | `propagate-exit.sh` |
@@ -97,27 +97,23 @@ failure warns and leaves the head JSON and gate unchanged. Cleanup always runs.
 
 ### Steps 4 and 5 — render and post
 
-`render-comment` fills `templates/comment.md.tmpl` from the scan JSON, and
-from the delta JSON when there is one, writing `$RUNNER_TEMP/comment.md`. With
-a delta it emits a three-column axis table with movement arrows, a "Why
-downgraded" block and a resolved-findings block; without one, a two-column
-axis table. Findings are sorted by severity then rule ID and **truncated to
-the first ten**. When the scan reports no agent surface it swaps the heading
-and drops the axis and findings blocks entirely.
+Both OS wrappers invoke one `render.py`. It writes the marker-first
+`$RUNNER_TEMP/comment.md` and appends the same safe body to
+`$GITHUB_STEP_SUMMARY`; only fixed link attribution differs. Summary runs for
+every validated push/PR regardless of comment configuration, token, fork, or
+App. Untrusted fields are flattened, escaped and bounded. Head findings use
+effective severity CRITICAL→INFO plus deterministic rule/path/line/index
+tie-breaks and cap at ten. Only Security, Permission hygiene, and Transparency
+are public; raw Quality stays an output. Rendering failure writes a controlled
+visible fallback, warns, and exits zero so it cannot replace scan policy.
 
-`report` posts that file. It searches the PR's comments for a body starting
-with the marker and **patches** the existing comment when it finds one, or
-posts a new one when it does not — that is the whole of the stickiness
-mechanism. Three branches come before the normal path:
-
-- **Fork PR** (`INPUT_IS_FORK_PR == 'true'`): prints the rendered comment into
-  the job log inside a `::group::`, emits a `::warning::` annotation, exits 0.
-  A fork-origin PR gets a read-only token, so posting would fail.
-- **The App is already commenting**: if a comment starting with the App's
-  marker `<!-- skilltrust:bot:v1 -->` exists, the Action replaces its own
-  comment with a superseded note and exits, rather than leaving a second,
-  disagreeing grade on the PR.
-- Otherwise, patch or post.
+`report` makes one paginated comment lookup and parses it locally. Lookup
+failure warns and exits without POST, preventing duplicates. A marker match is
+PATCHed; no match is POSTed. All API/native failures warn and preserve Summary
+and policy. Before API access, head and base repository identities are compared:
+a mismatch gets no token or Action comment and its inertly prefixed log copy is
+App-delivery-only. If the App marker exists, the Action replaces its own old
+comment with the controlled superseded note and yields.
 
 ### Step 6 — telemetry
 
@@ -170,6 +166,7 @@ values are:
 | `SCAN_ACTION_DELTA_JSON` | `$GITHUB_ENV` | delta | render (`INPUT_DELTA_JSON`) |
 | `delta-json-path` | step output | delta | nothing; `action.yml` uses the `$GITHUB_ENV` value instead |
 | `$RUNNER_TEMP/comment.md` | a file at a conventional path | render | report |
+| `$GITHUB_STEP_SUMMARY` | runner file | render | GitHub Job Summary |
 
 Two details this table hides:
 
@@ -229,11 +226,11 @@ The Action does not define these; it consumes them.
 
 ## Telemetry payload
 
-Ten fields, none identifying: `action_version`, `detector_version`,
-`runner_os`, `runner_arch`, `repo_visibility`, `repo_hash`, `grade`,
-`finding_count`, `trigger`, `delta_enabled`. `repo_hash` is a SHA-256 of the
-repository URL, not a name. No paths, no finding contents, no branch, no commit,
-no token. Opt out with `telemetry: false`.
+Ten fields, with no raw repository contents: `action_version`,
+`detector_version`, `runner_os`, `runner_arch`, `repo_visibility`, `repo_hash`,
+`grade`, `finding_count`, `trigger`, `delta_enabled`. `repo_hash` is a stable
+pseudonymous SHA-256 of the repository URL, not a name. No paths, finding
+contents, branch, commit, or token. Opt out with `telemetry: false`.
 
 `action_version` is a literal in `action.yml`'s telemetry steps, not derived
 from the tag, so it has to be moved by hand at release time.
@@ -273,6 +270,8 @@ which it chose.
 - `exec-scan-ps1.sh` executes clean, findings, no-surface, tool-error,
   malformed-result and repeated scan cases. It checks difficult native paths,
   exact raw JSON bytes, deferred exits and all public step outputs.
+- `exec-reporting-ps1.sh` executes the shared renderer and PowerShell delivery
+  path, including sticky update and inert fork logging.
 
 `.github/workflows/ci.yml` has nine jobs: `bats`, `pwsh-parse`,
 `pwsh-exec-delta`, `e2e-gate-defaults`, and five smoke jobs that run the real

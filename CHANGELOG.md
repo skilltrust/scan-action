@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- Add a single hostile-data-safe renderer for every completed push/PR Job
+  Summary and optional PR comment. Reports expose three public axes, cap and
+  order findings by effective severity, retain complete raw JSON, use fixed
+  privacy-safe attribution, and make render failures visible without changing
+  policy.
+- Make comment delivery paginate and fail open without duplicate POSTs. Forks
+  compare head/base repository identity, receive no token, and use App-only PR
+  delivery; API/native failures preserve Summary and scan policy.
+- Replace onboarding with explicit nonblocking report-only quickstarts and
+  accurate scope, artifact, fork, pinning, boundary, and telemetry contracts.
 - Add `report-only: false`. When enabled, finding exits `1` and `2` report but
   do not block; input, tool, install, integrity, and invalid-result failures do.
 - Validate scan and delta JSON before publishing outputs. Public outputs now

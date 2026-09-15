@@ -154,40 +154,52 @@ runs:
         INPUT_SCAN_ALL:        ${{ inputs.scan-all }}
       run: ${{ github.action_path }}/scripts/delta.ps1
 
-    - name: Render comment
+    - name: Render report
       shell: bash
-      if: github.event_name == 'pull_request' && inputs.comment == 'true' && runner.os != 'Windows' && steps.scan.outputs.result-valid == 'true'
+      if: (github.event_name == 'pull_request' || github.event_name == 'push') && runner.os != 'Windows' && steps.scan.outputs.result-valid == 'true'
       env:
-        INPUT_SCAN_JSON:  ${{ steps.scan.outputs.scan-json-path }}
-        INPUT_DELTA_JSON: ${{ env.SCAN_ACTION_DELTA_JSON }}
+        INPUT_SCAN_JSON:     ${{ steps.scan.outputs.scan-json-path }}
+        INPUT_DELTA_JSON:    ${{ env.SCAN_ACTION_DELTA_JSON }}
+        INPUT_PATH:          ${{ inputs.path }}
+        INPUT_REPORT_ONLY:   ${{ inputs.report-only }}
+        INPUT_WARN_ON_BELOW_THRESHOLD:  ${{ inputs.warn-on-below-threshold }}
+        INPUT_FAIL_ON_NO_AGENT_SURFACE: ${{ inputs.fail-on-no-agent-surface }}
+        INPUT_DELTA_ENABLED: ${{ inputs.delta }}
       run: ${{ github.action_path }}/scripts/render-comment.sh
 
-    - name: Render comment (Windows)
+    - name: Render report (Windows)
       shell: pwsh
-      if: github.event_name == 'pull_request' && inputs.comment == 'true' && runner.os == 'Windows' && steps.scan-win.outputs.result-valid == 'true'
+      if: (github.event_name == 'pull_request' || github.event_name == 'push') && runner.os == 'Windows' && steps.scan-win.outputs.result-valid == 'true'
       env:
-        INPUT_SCAN_JSON:  ${{ steps.scan-win.outputs.scan-json-path }}
-        INPUT_DELTA_JSON: ${{ env.SCAN_ACTION_DELTA_JSON }}
+        INPUT_SCAN_JSON:     ${{ steps.scan-win.outputs.scan-json-path }}
+        INPUT_DELTA_JSON:    ${{ env.SCAN_ACTION_DELTA_JSON }}
+        INPUT_PATH:          ${{ inputs.path }}
+        INPUT_REPORT_ONLY:   ${{ inputs.report-only }}
+        INPUT_WARN_ON_BELOW_THRESHOLD:  ${{ inputs.warn-on-below-threshold }}
+        INPUT_FAIL_ON_NO_AGENT_SURFACE: ${{ inputs.fail-on-no-agent-surface }}
+        INPUT_DELTA_ENABLED: ${{ inputs.delta }}
       run: ${{ github.action_path }}/scripts/render-comment.ps1
 
     - name: Post sticky comment
       shell: bash
       if: github.event_name == 'pull_request' && inputs.comment == 'true' && runner.os != 'Windows' && steps.scan.outputs.result-valid == 'true'
       env:
-        GH_TOKEN: ${{ inputs.github-token }}
+        GH_TOKEN: ${{ github.event.pull_request.head.repo.full_name == github.event.pull_request.base.repo.full_name && inputs.github-token || '' }}
         INPUT_GITHUB_REPOSITORY: ${{ github.repository }}
         INPUT_PULL_NUMBER: ${{ github.event.pull_request.number }}
-        INPUT_IS_FORK_PR: ${{ github.event.pull_request.head.repo.fork }}
+        INPUT_HEAD_REPOSITORY: ${{ github.event.pull_request.head.repo.full_name }}
+        INPUT_BASE_REPOSITORY: ${{ github.event.pull_request.base.repo.full_name }}
       run: ${{ github.action_path }}/scripts/report.sh
 
     - name: Post sticky comment (Windows)
       shell: pwsh
       if: github.event_name == 'pull_request' && inputs.comment == 'true' && runner.os == 'Windows' && steps.scan-win.outputs.result-valid == 'true'
       env:
-        GH_TOKEN: ${{ inputs.github-token }}
+        GH_TOKEN: ${{ github.event.pull_request.head.repo.full_name == github.event.pull_request.base.repo.full_name && inputs.github-token || '' }}
         INPUT_GITHUB_REPOSITORY: ${{ github.repository }}
         INPUT_PULL_NUMBER: ${{ github.event.pull_request.number }}
-        INPUT_IS_FORK_PR: ${{ github.event.pull_request.head.repo.fork }}
+        INPUT_HEAD_REPOSITORY: ${{ github.event.pull_request.head.repo.full_name }}
+        INPUT_BASE_REPOSITORY: ${{ github.event.pull_request.base.repo.full_name }}
       run: ${{ github.action_path }}/scripts/report.ps1
 
     - name: Send telemetry

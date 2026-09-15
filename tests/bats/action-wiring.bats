@@ -26,6 +26,29 @@ ACTION="$BATS_TEST_DIRNAME/../../action.yml"
   ! grep -q 'continue-on-error' "$ACTION"
 }
 
+@test "action.yml: every completed push or PR renders Summary independent of comments" {
+  render_blocks="$(sed -n '/name: Render report/,/scripts\/render-comment.ps1/p' "$ACTION")"
+  [[ "$render_blocks" == *"github.event_name == 'pull_request' || github.event_name == 'push'"* ]]
+  [[ "$render_blocks" != *"inputs.comment"* ]]
+  [ "$(grep -c 'INPUT_REPORT_ONLY:.*inputs.report-only' "$ACTION")" -eq 3 ]
+  [ "$(grep -c 'INPUT_DELTA_ENABLED:.*inputs.delta' "$ACTION")" -eq 4 ]
+}
+
+@test "action.yml: fork boundary uses repository identity and withholds token" {
+  [ "$(grep -c 'INPUT_HEAD_REPOSITORY:.*head.repo.full_name' "$ACTION")" -eq 2 ]
+  [ "$(grep -c 'INPUT_BASE_REPOSITORY:.*base.repo.full_name' "$ACTION")" -eq 2 ]
+  [ "$(grep -c 'head.repo.full_name == github.event.pull_request.base.repo.full_name && inputs.github-token' "$ACTION")" -eq 2 ]
+  ! grep -q 'head.repo.fork' "$ACTION"
+  ! grep -q 'pull_request_target:' "$ACTION"
+}
+
+@test "report scripts paginate one lookup and never blanket-swallow it" {
+  for script in "$BATS_TEST_DIRNAME/../../scripts/report.sh" "$BATS_TEST_DIRNAME/../../scripts/report.ps1"; do
+    grep -q -- '--paginate --slurp' "$script"
+  done
+  ! grep -qE 'gh api.*\|\| true' "$BATS_TEST_DIRNAME/../../scripts/report.sh"
+}
+
 @test "scripts: scan and delta do not blanket-swallow failures" {
   ! grep -R -nE '\|\|[[:space:]]+true' "$BATS_TEST_DIRNAME/../../scripts/scan.sh" \
     "$BATS_TEST_DIRNAME/../../scripts/scan.ps1" "$BATS_TEST_DIRNAME/../../scripts/delta.sh" \

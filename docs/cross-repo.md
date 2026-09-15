@@ -23,7 +23,7 @@ compiler can catch. Three parts of it are load-bearing:
 
 - **Flag names and semantics.** `scan.{sh,ps1}` builds `scan <path> --format json --fail-on <v>`, plus `--fail-on-axis`, `--strict-mcp` and `--scan-all`; `delta.{sh,ps1}` calls the `delta` sub-command with two JSON files. A renamed or removed flag, or one whose default moves, breaks this Action at runtime with no build failure anywhere.
 - **Exit codes.** The Action turns the engine's exit code into the job's pass or fail. The `0` / `1` / `2` / `3` contract is what `propagate-exit.sh` implements, so it is load-bearing outside the engine's own repository.
-- **The JSON output shape.** The scan, render and telemetry steps parse the result rather than embedding the engine's types. `.axes[].grade`, `.findings[]` with `severity`, `rule_id`, `axis`, `file_path`, `line` and `description`, `.no_agent_surface` and `.version` are all read by name. The delta JSON's `.per_axis`, `.axis_explanations` and `.resolved_findings` likewise.
+- **The JSON output shape.** The scan, render and telemetry steps parse the result rather than embedding the engine's types. `.axes[].grade`, `.findings[]` with `severity`, `effective_severity`, `rule_id`, `file_path`, `line`, `diagnosis`, and `remediation`, plus `.warnings`, `.files_scanned`, `.no_agent_surface`, and `.version` are read by name. The delta JSON's `.per_axis` and `.resolved_findings` are presentation inputs.
 
 The upside of not compiling against the engine is that this repository builds
 and tests without it. The cost is that a breaking engine change shows up here

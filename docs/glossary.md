@@ -16,9 +16,8 @@ lives in a shell script rather than in a program.
 ### Delta mode
 
 `delta: true`. On pull-request triggers the Action also scans the base ref and
-runs the engine's `delta` sub-command, so the comment shows per-axis movement,
-a "Why downgraded" block and a resolved-findings block instead of a flat grade
-table.
+runs the engine's `delta` sub-command, so the report shows public-axis movement
+and a bounded resolved-findings block instead of a head-only table.
 
 It **doubles runtime**, because it means two full scans. Off by default. It
 also needs the base ref to be fetchable, which is why the documented workflow
@@ -48,12 +47,10 @@ someone who never looked: a renamed or removed input or output needs a `v2`.
 
 ### Fork degradation
 
-A pull request from a fork gets a read-only `GITHUB_TOKEN`, so posting a
-comment would fail. Rather than failing the build, `report.{sh,ps1}` detects
-this from `INPUT_IS_FORK_PR`, prints the rendered comment into the job log
-inside a `::group::`, emits a `::warning::` annotation and exits 0. The
-maintainer sees the result in the job log; the pull request itself stays
-comment-free.
+A pull request is a fork when head and base repository identities differ.
+`action.yml` then withholds the token and `report.{sh,ps1}` makes no API call.
+It prefixes every rendered line before inert log output, warns, and leaves PR
+delivery to an installed App. Summary and scan policy remain available.
 
 ### Gate defaults
 
@@ -120,8 +117,8 @@ for success would still pass if the final step were deleted.
 
 The single pull-request comment the Action maintains, identified by the marker
 `<!-- skilltrust:action:v1 -->` as the first line of the body. On each run
-`report.{sh,ps1}` searches the PR's comments for that marker and **patches**
-the one it finds, rather than posting a new one.
+`report.{sh,ps1}` paginates once, searches locally, and **patches** the one it
+finds. A failed lookup never falls through to POST.
 
 The marker string is a wire contract. Changing it orphans every comment
 already posted — the next run cannot find them, so it posts a second comment

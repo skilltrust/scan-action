@@ -40,6 +40,8 @@ jobs:
       - run: pwsh --version
       - name: Execute delta.ps1 against fake binaries
         run: ./tests/pwsh/exec-delta-ps1.sh
+      - name: Execute reporting PowerShell against fake GitHub API
+        run: ./tests/pwsh/exec-reporting-ps1.sh
 
   # The four gate-default verification cases against the REAL engine. bats runs
   # against a fake detector that returns whatever exit code the test hands it,
@@ -223,19 +225,19 @@ jobs:
             echo "Expected smoke-pr-delta to have left a marker comment, found none" >&2
             exit 1
           fi
-          # smoke-pr-delta scans malicious-repo, so the comment must currently
-          # say grade D. If it already said A, the flip this job asserts on
-          # would be vacuous.
-          if ! printf '%s' "$body" | grep -qF -- 'Trust Score **D**'; then
-            echo "Expected smoke-pr-delta's grade-D body; the D->A assertion would be vacuous" >&2
+          # smoke-pr-delta scans malicious-repo at fail-on high, so its report
+          # must carry a blocking threshold outcome. A clean body would make
+          # the rewrite assertion vacuous.
+          if ! printf '%s' "$body" | grep -qF -- 'Threshold reached — blocking'; then
+            echo "Expected smoke-pr-delta's blocking body; the malicious-to-clean assertion would be vacuous" >&2
             printf '%s\n' "$body" >&2
             exit 1
           fi
           echo "id=$id" >> "$GITHUB_OUTPUT"
 
       # Executes render-comment.ps1 and report.ps1 — the whole point of the job.
-      # clean-repo, so the comment must flip to grade A: a change only these two
-      # scripts could have made.
+      # clean-repo, so the comment must flip to a clean outcome: a change only
+      # these two scripts could have made.
       - name: Comment from Windows (executes render-comment.ps1 + report.ps1)
         uses: ./
         with:
@@ -263,9 +265,9 @@ jobs:
           fi
           body=$(gh api "$api" --jq '[.[] | select(.body | startswith("<!-- skilltrust:action:v1 -->"))][0].body')
           # If the Windows render/report steps had silently skipped, the body
-          # would still be smoke-pr-delta's grade D. That is the point.
-          if ! printf '%s' "$body" | grep -qF -- 'Trust Score **A**'; then
-            echo "Comment body is not clean-repo's grade A; the Windows render/report steps did not run" >&2
+          # would still carry smoke-pr-delta's blocking outcome.
+          if ! printf '%s' "$body" | grep -qF -- 'Clean — no findings'; then
+            echo "Comment body is not clean-repo's clean outcome; the Windows render/report steps did not run" >&2
             printf '%s\n' "$body" >&2
             exit 1
           fi
