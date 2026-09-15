@@ -76,6 +76,28 @@ teardown() { teardown_tmpdir; }
   [ "$(grep -c 'issues/42/comments?per_page=100' "$FAKE_GH_LOG")" -eq 1 ]
 }
 
+@test "report.sh: malformed paginated outer, page, entry, body, or id never writes" {
+  for response in \
+    '{bad' \
+    '{}' \
+    '[{}]' \
+    '[["not-a-comment"]]' \
+    '[[{"id":1,"body":false}]]' \
+    '[[{"id":"1","body":"ordinary"}]]'; do
+    : > "$FAKE_GH_LOG"
+    export FAKE_GH_COMMENTS="$response"
+    run bash "$BATS_TEST_DIRNAME/../../scripts/report.sh"
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"invalid response"* ]]
+    [ "$(grep -c 'issues/42/comments?per_page=100' "$FAKE_GH_LOG")" -eq 1 ]
+    [ "$(wc -l < "$FAKE_GH_LOG")" -eq 1 ]
+    ! grep -q 'PATCH\|body=@' "$FAKE_GH_LOG"
+  done
+  run env SCAN_EXIT_CODE=2 INPUT_REPORT_ONLY=false \
+    bash "$BATS_TEST_DIRNAME/../../scripts/propagate-exit.sh"
+  [ "$status" -eq 2 ]
+}
+
 @test "report.sh: 403, 429, 5xx, and network lookup failures never duplicate POST" {
   for failure in lookup-403 lookup-429 lookup-500 lookup-network; do
     : > "$FAKE_GH_LOG"

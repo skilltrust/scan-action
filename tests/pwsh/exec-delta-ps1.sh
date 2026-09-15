@@ -144,6 +144,19 @@ run_case "strict-mcp" "true" "false"
 run_case "scan-all" "false" "true"
 run_case "neither" "false" "false"
 
+malicious_path=$'absent\n::error::injected\n::stop-commands::token'
+malicious_log="$HARNESS_SCRATCH/malicious-path.log"
+env -i PATH="$PATH" HOME="$HOME" \
+  RUNNER_TEMP="$HARNESS_SCRATCH/rtemp-malicious" \
+  INPUT_BASE_REF="main" \
+  INPUT_HEAD_SCAN_JSON="$HARNESS_SCRATCH/rtemp-neither/scan.json" \
+  INPUT_PATH="$malicious_path" \
+  ARGS_LOG="$HARNESS_SCRATCH/malicious-args.log" \
+  pwsh -NoProfile -File "$HARNESS_ROOT/scripts/delta.ps1" > "$malicious_log"
+[ "$(grep -c '^::warning' "$malicious_log")" -eq 1 ]
+grep -q 'selected path is absent' "$malicious_log"
+! grep -q '::error::injected\|::stop-commands::token' "$malicious_log"
+
 echo "ALL CASES PASSED"
 HARNESS_EOF
 

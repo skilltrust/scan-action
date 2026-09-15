@@ -2,11 +2,12 @@
 
 ## Unreleased
 
-- Add a single hostile-data-safe renderer for every completed push/PR Job
+- Add a single hostile-data-safe renderer for every valid completed Job
   Summary and optional PR comment. Reports expose three public axes, cap and
   order findings by effective severity, retain complete raw JSON, use fixed
   privacy-safe attribution, and make render failures visible without changing
-  policy.
+  policy. Summary rendering covers every workflow trigger; comments remain
+  pull-request-only.
 - Make comment delivery paginate and fail open without duplicate POSTs. Forks
   compare head/base repository identity, receive no token, and use App-only PR
   delivery; API/native failures preserve Summary and scan policy.
@@ -16,7 +17,10 @@
   do not block; input, tool, install, integrity, and invalid-result failures do.
 - Validate scan and delta JSON before publishing outputs. Public outputs now
   select the runner's actual scan branch and `grade` carries the raw Quality
-  axis. Invalid scans publish no success-shaped outputs.
+  axis. Findings require the typed v0.10.0 fields consumed by reporting;
+  invalid scans publish no success-shaped outputs.
+- Reject malformed paginated comment responses before any POST/PATCH, and keep
+  repository-controlled paths out of delta workflow-command warnings.
 - Delta now scans the fetched commit with the head's scope controls, always
   cleans its worktree, and warns without changing the head gate when comparison
   is unavailable.

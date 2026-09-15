@@ -31,7 +31,7 @@ teardown() { teardown_tmpdir; }
 
 @test "scan.sh: captures non-zero detector exit code into GITHUB_ENV without failing the step" {
   export FAKE_DETECTOR_EXIT=2
-  export FAKE_DETECTOR_JSON="$(graded_scan_json '[{"rule_id":"SD-001"}]' D)"
+  export FAKE_DETECTOR_JSON="$(graded_scan_json '[{"rule_id":"SD-001","severity":"CRITICAL","effective_severity":"CRITICAL","description":"credential access","file_path":"AGENTS.md","line":3,"diagnosis":"dangerous access","remediation":"remove it","future_field":{"accepted":true}}]' D)"
   export INPUT_PATH="."
   export INPUT_FAIL_ON="high"
   export INPUT_FAIL_ON_AXIS=""
@@ -40,6 +40,24 @@ teardown() { teardown_tmpdir; }
   run bash "$BATS_TEST_DIRNAME/../../scripts/scan.sh"
   [ "$status" -eq 0 ]
   grep -q "SCAN_EXIT_CODE=2" "$GITHUB_ENV"
+  grep -q '^result-valid=true$' "$GITHUB_OUTPUT"
+}
+
+@test "scan.sh: non-object or mistyped finding on exits 1 and 2 becomes deferred failure" {
+  local json
+  for case in '1|["not-a-finding"]' '2|[{"rule_id":"SD-001","severity":"CRITICAL","effective_severity":"CRITICAL","description":"x","file_path":"a","line":"3","diagnosis":"x","remediation":"x"}]'; do
+    IFS='|' read -r FAKE_DETECTOR_EXIT findings <<< "$case"
+    export FAKE_DETECTOR_EXIT findings
+    json="$(graded_scan_json "$findings" D)"
+    export FAKE_DETECTOR_JSON="$json"
+    : > "$GITHUB_ENV"; : > "$GITHUB_OUTPUT"
+    run bash "$BATS_TEST_DIRNAME/../../scripts/scan.sh"
+    [ "$status" -eq 0 ]
+    grep -qx 'SCAN_EXIT_CODE=3' "$GITHUB_ENV"
+    grep -qx 'result-valid=false' "$GITHUB_OUTPUT"
+    ! grep -q '^scan-json-path=' "$GITHUB_OUTPUT"
+    [ "$(cat "$RUNNER_TEMP/scan.json")" = "$json" ]
+  done
 }
 
 @test "scan.sh: captures detector tool-error exit code 3 into GITHUB_ENV without failing the step" {

@@ -109,12 +109,12 @@ render() { run bash "$BATS_TEST_DIRNAME/../../scripts/render-comment.sh"; }
   ! grep -Eq 'https?://[^ )]*(acme|widgets|agent|SD-099)' "$RUNNER_TEMP/comment.md"
 }
 
-@test "safe renderer: push Summary exists without a comment delivery context" {
+@test "safe renderer: scheduled Summary uses neutral checkout without a comment delivery context" {
   write_scan
-  export GITHUB_EVENT_NAME="push"
+  export GITHUB_EVENT_NAME="schedule"
   export SCAN_EXIT_CODE="0"
   render
-  grep -q 'Push checkout' "$GITHUB_STEP_SUMMARY"
+  grep -q 'Workflow checkout' "$GITHUB_STEP_SUMMARY"
   grep -q 'utm_content=job_summary' "$GITHUB_STEP_SUMMARY"
 }
 

@@ -66,6 +66,16 @@ try {
   $result = Get-Content -LiteralPath $out -Raw | ConvertFrom-Json
   $names = @($result.PSObject.Properties.Name)
   if ("findings" -notin $names -or $result.findings -isnot [array]) { throw "findings" }
+  foreach ($finding in $result.findings) {
+    if ($finding -isnot [pscustomobject]) { throw "finding object" }
+    $findingNames = @($finding.PSObject.Properties.Name)
+    foreach ($field in @("rule_id", "severity", "effective_severity", "description", "file_path", "diagnosis", "remediation")) {
+      if ($field -notin $findingNames -or $finding.$field -isnot [string]) { throw "finding field" }
+    }
+    if ($finding.severity -notmatch '^(CRITICAL|HIGH|MEDIUM|LOW|INFO)$' -or
+        $finding.effective_severity -notmatch '^(CRITICAL|HIGH|MEDIUM|LOW|INFO)$' -or
+        $finding.line -isnot [long] -or $finding.line -lt 0) { throw "finding value" }
+  }
   $findings = @($result.findings).Count
   $noSurface = "no_agent_surface" -in $names -and $result.no_agent_surface -eq $true
   if ($noSurface) {

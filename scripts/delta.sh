@@ -65,7 +65,7 @@ WORKTREE_ADDED=true
 
 BASE_TARGET="$BASE_DIR"
 [ "$SCAN_PATH" = "." ] || BASE_TARGET="$BASE_DIR/$SCAN_PATH"
-[ -e "$BASE_TARGET" ] || unavailable "path '$SCAN_PATH' is absent from the base commit"
+[ -e "$BASE_TARGET" ] || unavailable "selected path is absent from the base commit"
 
 BASE_ARGS=(scan "$BASE_TARGET" --format json)
 [ "${INPUT_STRICT_MCP:-false}" = "true" ] && BASE_ARGS+=(--strict-mcp)

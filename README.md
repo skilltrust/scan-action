@@ -2,7 +2,7 @@
 
 Free CI scanning for AI-agent configuration. The Action downloads the pinned
 `skill-detector`, scans the checkout on the GitHub runner, writes every
-completed push/PR result to Job Summary, and can maintain one PR comment.
+valid completed scan to Job Summary, and can maintain one PR comment.
 
 The public report shows Security, Permission hygiene, and Transparency.
 `grade` remains the detector's raw Quality-axis output for compatibility.
@@ -170,8 +170,9 @@ surface while still scanning, summarizing, and enforcing the configured policy.
 - **Downloads:** the pinned detector archive and checksum come from its GitHub
   release; no `latest` detector lookup is used.
 - **GitHub:** Job Summary always receives the bounded report for completed
-  push/PR scans. If enabled and writable, the same bounded report becomes a PR
-  comment. Optional artifact upload is explicitly user-configured.
+  valid scans on any workflow trigger. If enabled and writable, the same
+  bounded report becomes a PR comment. Optional artifact upload is explicitly
+  user-configured.
 - **SkillTrust:** no raw result, path, finding detail, repository name, branch,
   commit, user, or token is uploaded. The default heartbeat sends only the ten
   fields below, including aggregate grade/count and a stable repository hash.

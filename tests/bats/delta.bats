@@ -152,3 +152,13 @@ PY
     [ "$status" -eq "$code" ]
   done
 }
+
+@test "delta.sh: hostile missing path cannot inject workflow commands" {
+  export INPUT_PATH=$'absent\n::error::injected\n::stop-commands::token'
+  run_delta
+  [ "$status" -eq 0 ]
+  [ "$(printf '%s\n' "$output" | grep -c '^::warning')" -eq 1 ]
+  [[ "$output" == *"selected path is absent"* ]]
+  [[ "$output" != *"::error::injected"* ]]
+  [[ "$output" != *"::stop-commands::token"* ]]
+}

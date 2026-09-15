@@ -142,7 +142,7 @@ def render(scan, delta, published, content, args):
     heading = "## SkillTrust — Nothing was checked" if no_surface else "## SkillTrust scan"
     lines = [heading, "", "| Run | Value |", "|---|---|"]
     mode = "Report only" if report_only else "Gate policy"
-    checkout = "Pull request head" if args.event == "pull_request" else "Push checkout"
+    checkout = "Pull request head" if args.event == "pull_request" else "Workflow checkout"
     lines.extend(
         [
             f"| Scope | {safe(args.scope, 300)} |",

@@ -66,7 +66,7 @@ try {
   $worktreeAdded = $true
 
   $baseTarget = if ($scanPath -eq ".") { $baseDir } else { Join-Path $baseDir $scanPath }
-  if (!(Test-Path -LiteralPath $baseTarget)) { Stop-Unavailable "path '$scanPath' is absent from the base commit" }
+  if (!(Test-Path -LiteralPath $baseTarget)) { Stop-Unavailable "selected path is absent from the base commit" }
 
   $scanArgs = @("scan", $baseTarget, "--format", "json")
   if ($env:INPUT_STRICT_MCP -eq "true") { $scanArgs += "--strict-mcp" }

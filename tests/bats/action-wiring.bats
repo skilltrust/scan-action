@@ -26,10 +26,12 @@ ACTION="$BATS_TEST_DIRNAME/../../action.yml"
   ! grep -q 'continue-on-error' "$ACTION"
 }
 
-@test "action.yml: every completed push or PR renders Summary independent of comments" {
+@test "action.yml: every valid completed scan renders while comments remain PR-only" {
   render_blocks="$(sed -n '/name: Render report/,/scripts\/render-comment.ps1/p' "$ACTION")"
-  [[ "$render_blocks" == *"github.event_name == 'pull_request' || github.event_name == 'push'"* ]]
+  [[ "$render_blocks" != *"github.event_name"* ]]
   [[ "$render_blocks" != *"inputs.comment"* ]]
+  [ "$(grep -c "if: runner.os.*result-valid == 'true'" "$ACTION")" -eq 2 ]
+  [ "$(grep -c "if: github.event_name == 'pull_request' && inputs.comment == 'true'" "$ACTION")" -eq 2 ]
   [ "$(grep -c 'INPUT_REPORT_ONLY:.*inputs.report-only' "$ACTION")" -eq 3 ]
   [ "$(grep -c 'INPUT_DELTA_ENABLED:.*inputs.delta' "$ACTION")" -eq 4 ]
 }

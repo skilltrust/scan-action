@@ -156,7 +156,7 @@ runs:
 
     - name: Render report
       shell: bash
-      if: (github.event_name == 'pull_request' || github.event_name == 'push') && runner.os != 'Windows' && steps.scan.outputs.result-valid == 'true'
+      if: runner.os != 'Windows' && steps.scan.outputs.result-valid == 'true'
       env:
         INPUT_SCAN_JSON:     ${{ steps.scan.outputs.scan-json-path }}
         INPUT_DELTA_JSON:    ${{ env.SCAN_ACTION_DELTA_JSON }}
@@ -169,7 +169,7 @@ runs:
 
     - name: Render report (Windows)
       shell: pwsh
-      if: (github.event_name == 'pull_request' || github.event_name == 'push') && runner.os == 'Windows' && steps.scan-win.outputs.result-valid == 'true'
+      if: runner.os == 'Windows' && steps.scan-win.outputs.result-valid == 'true'
       env:
         INPUT_SCAN_JSON:     ${{ steps.scan-win.outputs.scan-json-path }}
         INPUT_DELTA_JSON:    ${{ env.SCAN_ACTION_DELTA_JSON }}

@@ -39,6 +39,22 @@ export INPUT_BASE_REPOSITORY="acme/widgets"
 pwsh -NoProfile -File "$ROOT/scripts/report.ps1"
 grep -q 'PATCH repos/acme/widgets/issues/comments/777' "$FAKE_GH_LOG"
 
+for response in \
+  '{bad' \
+  '{}' \
+  '[{}]' \
+  '[["not-a-comment"]]' \
+  '[[{"id":1,"body":false}]]' \
+  '[[{"id":"1","body":"ordinary"}]]'; do
+  : > "$FAKE_GH_LOG"
+  export FAKE_GH_COMMENTS="$response"
+  pwsh -NoProfile -File "$ROOT/scripts/report.ps1" > "$SCRATCH/malformed.log"
+  grep -q 'invalid response' "$SCRATCH/malformed.log"
+  [ "$(grep -c 'issues/42/comments?per_page=100' "$FAKE_GH_LOG")" -eq 1 ]
+  [ "$(wc -l < "$FAKE_GH_LOG")" -eq 1 ]
+  ! grep -q 'PATCH\|body=@' "$FAKE_GH_LOG"
+done
+
 : > "$FAKE_GH_LOG"
 export INPUT_HEAD_REPOSITORY="fork/widgets"
 printf '%s\n' '::error::hostile' > "$RUNNER_TEMP/comment.md"

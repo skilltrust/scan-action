@@ -13,6 +13,9 @@ ST-8 through ST-11 implemented locally on the M1 base.
   scope limits, forks, data flow, pinning, and default-on ten-field telemetry.
 - Detector remains `v0.10.0`; raw Quality output and telemetry payload/default
   are unchanged.
+- Critical review fixes enforce typed v0.10.0 finding entries, fail closed on
+  malformed paginated comments, render Summary on every workflow trigger, and
+  keep hostile scan paths out of delta annotations.
 
 Local Bats, shell/Python checks, native PowerShell reporting/scan/delta checks,
 real-engine policy fixtures, and the full local suite are phase acceptance

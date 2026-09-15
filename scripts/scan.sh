@@ -64,8 +64,20 @@ fi
 if ! command -v jq >/dev/null 2>&1 ||
    ! jq -e --arg code "$EXIT" '
       def grade: type == "string" and test("^[ABCDF]$");
+      def severity: type == "string" and test("^(CRITICAL|HIGH|MEDIUM|LOW|INFO)$");
+      def finding:
+        type == "object" and
+        (.rule_id | type == "string") and
+        (.severity | severity) and
+        (.effective_severity | severity) and
+        (.description | type == "string") and
+        (.file_path | type == "string") and
+        (.line | type == "number" and . >= 0 and floor == .) and
+        (.diagnosis | type == "string") and
+        (.remediation | type == "string");
       . as $result |
       (.findings | type == "array") and
+      (.findings | all(finding)) and
       (if .no_agent_surface == true then
          (.findings | length == 0) and (has("axes") | not) and ($code == "0")
        else

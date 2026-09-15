@@ -60,18 +60,23 @@ if ! gh api --paginate --slurp "repos/$REPO/issues/$PR/comments?per_page=100" > 
   warn_delivery "GitHub comment lookup failed"
   exit 0
 fi
-if ! jq -e 'type == "array" and all(.[]; type == "array")' "$COMMENTS" >/dev/null 2>&1; then
+if ! IDS="$(jq -er --arg app "$APP_MARKER" --arg ours "$MARKER" '
+  def valid_id: type == "number" and . > 0 and floor == .;
+  if type == "array" and
+     all(.[]; type == "array" and
+       all(.[]; type == "object" and (.body | type == "string") and (.id | valid_id)))
+  then
+    [
+      ([.[][] | select(.body | startswith($app))][0].id // ""),
+      ([.[][] | select(.body | startswith($ours))][0].id // "")
+    ] | map(tostring) | join("|")
+  else error("invalid paginated comments")
+  end
+' "$COMMENTS" 2>/dev/null)"; then
   warn_delivery "GitHub comment lookup returned an invalid response"
   exit 0
 fi
-
-APP_COMMENT_ID="$(jq -r --arg marker "$APP_MARKER" '[.[][] | select((.body | type) == "string" and (.body | startswith($marker)))][0].id // empty' "$COMMENTS")"
-OURS="$(jq -r --arg marker "$MARKER" '[.[][] | select((.body | type) == "string" and (.body | startswith($marker)))][0].id // empty' "$COMMENTS")"
-if { [ -n "$APP_COMMENT_ID" ] && ! [[ "$APP_COMMENT_ID" =~ ^[0-9]+$ ]]; } ||
-   { [ -n "$OURS" ] && ! [[ "$OURS" =~ ^[0-9]+$ ]]; }; then
-  warn_delivery "GitHub comment lookup returned an invalid identifier"
-  exit 0
-fi
+IFS='|' read -r APP_COMMENT_ID OURS <<< "$IDS"
 
 if [ -n "$APP_COMMENT_ID" ]; then
   echo "report.sh: App comment present ($APP_COMMENT_ID); yielding"

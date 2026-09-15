@@ -35,7 +35,7 @@ POSIX branch gated on `runner.os != 'Windows'` and a Windows branch gated on
 | 1 | Install | always | `install.{sh,ps1}` |
 | 2 | Scan | always | `scan.{sh,ps1}` |
 | 3 | Compute delta | `delta == 'true'` **and** the event is `pull_request` | `delta.{sh,ps1}` |
-| 4 | Render report | a validated scan completed on `push` or `pull_request` | `render-comment.{sh,ps1}` + shared `render.py` |
+| 4 | Render report | any validated completed scan | `render-comment.{sh,ps1}` + shared `render.py` |
 | 5 | Post sticky comment | the event is `pull_request` **and** `comment == 'true'` | `report.{sh,ps1}` |
 | 6 | Send telemetry | `telemetry == 'true'` | `telemetry.{sh,ps1}` |
 | 7 | Propagate exit code | always | `propagate-exit.sh` |
@@ -79,9 +79,11 @@ those inputs are `'true'` — and writes the result to `$RUNNER_TEMP/scan.json`.
 
 The engine's exit code is captured before parsing. Exits `0`/`1`/`2` require a
 valid result: a findings array and either all four graded axes or the explicit
-no-agent-surface shape. Exit/result disagreement is invalid. Valid raw JSON is
-not rewritten. Tool/nonstandard exits and invalid results publish no public
-success-shaped outputs and remain deferred failures.
+no-agent-surface shape. Every finding must be an object with the typed v0.10.0
+fields consumed by reporting; additional fields remain allowed. Exit/result
+disagreement is invalid. Valid raw JSON is not rewritten. Tool/nonstandard
+exits and invalid results publish no public success-shaped outputs and remain
+deferred failures.
 
 `grade` is the raw `.axes.quality.grade`; `findings-count` is the validated
 array length. No-agent-surface publishes an empty grade.
@@ -100,16 +102,17 @@ failure warns and leaves the head JSON and gate unchanged. Cleanup always runs.
 Both OS wrappers invoke one `render.py`. It writes the marker-first
 `$RUNNER_TEMP/comment.md` and appends the same safe body to
 `$GITHUB_STEP_SUMMARY`; only fixed link attribution differs. Summary runs for
-every validated push/PR regardless of comment configuration, token, fork, or
-App. Untrusted fields are flattened, escaped and bounded. Head findings use
+every validated scan on every trigger regardless of comment configuration,
+token, fork, or App. Untrusted fields are flattened, escaped and bounded. Head findings use
 effective severity CRITICAL→INFO plus deterministic rule/path/line/index
 tie-breaks and cap at ten. Only Security, Permission hygiene, and Transparency
 are public; raw Quality stays an output. Rendering failure writes a controlled
 visible fallback, warns, and exits zero so it cannot replace scan policy.
 
-`report` makes one paginated comment lookup and parses it locally. Lookup
-failure warns and exits without POST, preventing duplicates. A marker match is
-PATCHed; no match is POSTed. All API/native failures warn and preserve Summary
+`report` makes one paginated comment lookup and validates every page and
+comment locally, including string bodies and numeric IDs. Lookup or schema
+failure warns and exits without POST/PATCH, preventing duplicates. A marker
+match is PATCHed; no match is POSTed. All API/native failures warn and preserve Summary
 and policy. Before API access, head and base repository identities are compared:
 a mismatch gets no token or Action comment and its inertly prefixed log copy is
 App-delivery-only. If the App marker exists, the Action replaces its own old

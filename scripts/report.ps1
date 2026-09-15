@@ -47,14 +47,30 @@ Remove-Item -LiteralPath $commentsFile -Force -ErrorAction SilentlyContinue
 try {
   & gh api --paginate --slurp "repos/$repo/issues/$pr/comments?per_page=100" > $commentsFile 2>$null
   if ($LASTEXITCODE -ne 0) { throw "lookup failed" }
-  $pages = Get-Content -LiteralPath $commentsFile -Raw | ConvertFrom-Json
-  if ($pages -isnot [array]) { throw "invalid pages" }
-  $comments = @($pages | ForEach-Object { @($_) })
-  $appComment = @($comments | Where-Object { $_.body -is [string] -and $_.body.StartsWith($appMarker) } | Select-Object -First 1)[0]
-  $oursComment = @($comments | Where-Object { $_.body -is [string] -and $_.body.StartsWith($marker) } | Select-Object -First 1)[0]
-  $appID = if ($appComment) { [string]$appComment.id } else { "" }
-  $oursID = if ($oursComment) { [string]$oursComment.id } else { "" }
-  if (($appID -and $appID -notmatch '^\d+$') -or ($oursID -and $oursID -notmatch '^\d+$')) { throw "invalid id" }
+  $document = [System.Text.Json.JsonDocument]::Parse((Get-Content -LiteralPath $commentsFile -Raw))
+  try {
+    if ($document.RootElement.ValueKind -ne [System.Text.Json.JsonValueKind]::Array) { throw "invalid pages" }
+    $appID = ""
+    $oursID = ""
+    foreach ($page in $document.RootElement.EnumerateArray()) {
+      if ($page.ValueKind -ne [System.Text.Json.JsonValueKind]::Array) { throw "invalid page" }
+      foreach ($comment in $page.EnumerateArray()) {
+        if ($comment.ValueKind -ne [System.Text.Json.JsonValueKind]::Object) { throw "invalid comment" }
+        $bodyElement = [System.Text.Json.JsonElement]::new()
+        $idElement = [System.Text.Json.JsonElement]::new()
+        if (!$comment.TryGetProperty("body", [ref]$bodyElement) -or
+            $bodyElement.ValueKind -ne [System.Text.Json.JsonValueKind]::String -or
+            !$comment.TryGetProperty("id", [ref]$idElement)) { throw "invalid comment fields" }
+        $id = 0L
+        if (!$idElement.TryGetInt64([ref]$id) -or $id -le 0) { throw "invalid id" }
+        $body = $bodyElement.GetString()
+        if (!$appID -and $body.StartsWith($appMarker)) { $appID = [string]$id }
+        if (!$oursID -and $body.StartsWith($marker)) { $oursID = [string]$id }
+      }
+    }
+  } finally {
+    $document.Dispose()
+  }
 } catch {
   Write-DeliveryWarning "GitHub comment lookup failed or returned an invalid response"
   exit 0
