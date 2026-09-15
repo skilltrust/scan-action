@@ -230,6 +230,7 @@ runs:
     # see the header comment in the script.
     - name: Propagate exit code
       shell: bash
+      if: always()
       env:
         INPUT_WARN_ON_BELOW_THRESHOLD:   ${{ inputs.warn-on-below-threshold }}
         INPUT_REPORT_ONLY:               ${{ inputs.report-only }}

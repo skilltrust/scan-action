@@ -39,6 +39,39 @@ export INPUT_BASE_REPOSITORY="acme/widgets"
 pwsh -NoProfile -File "$ROOT/scripts/report.ps1"
 grep -q 'PATCH repos/acme/widgets/issues/comments/777' "$FAKE_GH_LOG"
 
+: > "$FAKE_GH_LOG"
+export INPUT_GITHUB_REPOSITORY="fork-owner/widgets"
+export INPUT_HEAD_REPOSITORY="fork-owner/widgets"
+export INPUT_BASE_REPOSITORY="fork-owner/widgets"
+export FAKE_GH_COMMENTS='[[]]'
+pwsh -NoProfile -File "$ROOT/scripts/report.ps1"
+grep -q 'repos/fork-owner/widgets/issues/42/comments' "$FAKE_GH_LOG"
+
+export INPUT_GITHUB_REPOSITORY="acme/widgets"
+export INPUT_HEAD_REPOSITORY="acme/widgets"
+export INPUT_BASE_REPOSITORY="acme/widgets"
+for failure in lookup-403 lookup-429 lookup-500 lookup-network lookup-timeout; do
+  : > "$FAKE_GH_LOG"
+  export FAKE_GH_FAIL="$failure"
+  pwsh -NoProfile -File "$ROOT/scripts/report.ps1" > "$SCRATCH/failure.log"
+  grep -q 'comment lookup failed' "$SCRATCH/failure.log"
+  [ "$(wc -l < "$FAKE_GH_LOG")" -eq 1 ]
+done
+for operation in post patch; do
+  for failure in 403 429 500 network timeout; do
+    : > "$FAKE_GH_LOG"
+    export FAKE_GH_FAIL="$operation-$failure"
+    if [ "$operation" = patch ]; then
+      export FAKE_GH_COMMENTS='[[{"id":777,"body":"<!-- skilltrust:action:v1 -->\nold"}]]'
+    else
+      export FAKE_GH_COMMENTS='[[]]'
+    fi
+    pwsh -NoProfile -File "$ROOT/scripts/report.ps1" > "$SCRATCH/failure.log"
+    grep -q 'comment unavailable' "$SCRATCH/failure.log"
+  done
+done
+unset FAKE_GH_FAIL
+
 for response in \
   '{bad' \
   '{}' \

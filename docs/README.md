@@ -11,6 +11,7 @@ project knowledge has exactly one home; nothing here is documented twice.
 | [`glossary.md`](glossary.md) | Terms specific to this repository: sticky comment, floating `v1`, fork degradation, delta mode, gate defaults, script pair. |
 | [`cross-repo.md`](cross-repo.md) | The other two repositories, what this one depends on, and what a release has to move. |
 | [`STATUS.md`](STATUS.md) | Current implementation and verification status. |
+| [`release-readiness.md`](release-readiness.md) | M3 local evidence and the external acceptance checklist that still requires authorization. |
 | [`../README.md`](../README.md) | User-facing: inputs, outputs, exit codes, permissions, telemetry. What a Marketplace user reads. |
 | [`../CHANGELOG.md`](../CHANGELOG.md) | Released behaviour, per version. Authoritative. |
 | [`../action.yml`](../action.yml) | The Action definition itself: the inputs, the outputs, the steps and their conditions. |

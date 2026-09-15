@@ -20,10 +20,13 @@ setup() {
 }
 teardown() { teardown_tmpdir; }
 
-@test "report.sh: creates a new comment when no marker comment exists" {
+@test "report.sh: same-repo PR in a forked repository creates a new comment" {
+  export INPUT_GITHUB_REPOSITORY="fork-owner/widgets"
+  export INPUT_HEAD_REPOSITORY="fork-owner/widgets"
+  export INPUT_BASE_REPOSITORY="fork-owner/widgets"
   run bash "$BATS_TEST_DIRNAME/../../scripts/report.sh"
   [ "$status" -eq 0 ]
-  grep -q "api repos/acme/widgets/issues/42/comments" "$FAKE_GH_LOG"
+  grep -q "api repos/fork-owner/widgets/issues/42/comments" "$FAKE_GH_LOG"
   ! grep -q "PATCH" "$FAKE_GH_LOG"
 }
 
@@ -52,7 +55,7 @@ teardown() { teardown_tmpdir; }
 }
 
 @test "report.sh: replaces its own comment with a superseded note when the App is present" {
-  export FAKE_GH_COMMENTS='[[{"id":900,"body":"<!-- skilltrust:bot:v1 -->\napp"}],[{"id":777,"body":"<!-- skilltrust:action:v1 -->\nold"}]]'
+  export FAKE_GH_COMMENTS='[[{"id":777,"body":"<!-- skilltrust:action:v1 -->\nold"}],[{"id":900,"body":"<!-- skilltrust:bot:v1 -->\napp"}]]'
   run bash "$BATS_TEST_DIRNAME/../../scripts/report.sh"
   [ "$status" -eq 0 ]
   grep -q "PATCH repos/acme/widgets/issues/comments/777" "$FAKE_GH_LOG"
@@ -108,8 +111,8 @@ teardown() { teardown_tmpdir; }
   [ "$status" -eq 2 ]
 }
 
-@test "report.sh: 403, 429, 5xx, and network lookup failures never duplicate POST" {
-  for failure in lookup-403 lookup-429 lookup-500 lookup-network; do
+@test "report.sh: 403, 429, 5xx, network, and timeout lookup failures never duplicate POST" {
+  for failure in lookup-403 lookup-429 lookup-500 lookup-network lookup-timeout; do
     : > "$FAKE_GH_LOG"
     export FAKE_GH_FAIL="$failure"
     run bash "$BATS_TEST_DIRNAME/../../scripts/report.sh"
@@ -120,11 +123,26 @@ teardown() { teardown_tmpdir; }
   done
 }
 
-@test "report.sh: API write failures warn without failing policy" {
-  export FAKE_GH_FAIL="post-403"
-  run bash "$BATS_TEST_DIRNAME/../../scripts/report.sh"
-  [ "$status" -eq 0 ]
-  [[ "$output" == *"comment creation failed"* ]]
+@test "report.sh: POST and PATCH 403, 429, 5xx, network, and timeout failures preserve Summary and policy" {
+  export GITHUB_STEP_SUMMARY="$TMPDIR_TEST/summary.md"
+  echo "summary survives" > "$GITHUB_STEP_SUMMARY"
+  for operation in post patch; do
+    for failure in 403 429 500 network timeout; do
+      : > "$FAKE_GH_LOG"
+      export FAKE_GH_FAIL="$operation-$failure"
+      if [ "$operation" = patch ]; then
+        export FAKE_GH_COMMENTS='[[{"id":777,"body":"<!-- skilltrust:action:v1 -->\nold"}]]'
+      else
+        export FAKE_GH_COMMENTS='[[]]'
+      fi
+      run bash "$BATS_TEST_DIRNAME/../../scripts/report.sh"
+      [ "$status" -eq 0 ]
+      [[ "$output" == *"comment "*" failed"* ]]
+      grep -qx "summary survives" "$GITHUB_STEP_SUMMARY"
+      run env SCAN_EXIT_CODE=2 INPUT_REPORT_ONLY=false bash "$BATS_TEST_DIRNAME/../../scripts/propagate-exit.sh"
+      [ "$status" -eq 2 ]
+    done
+  done
 }
 
 @test "report.sh: missing token is a native warning with no API call" {

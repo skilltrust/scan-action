@@ -51,8 +51,9 @@ failing scan still gets its comment posted and its telemetry sent. Delete step
 ### Step 1 — install
 
 Resolves the release asset for `detector-version`, downloads it together with
-the release's `checksums.txt` from the engine's GitHub releases, **verifies the
-SHA-256 before extracting**, then appends the extraction directory to
+the release's `checksums.txt` from the engine's GitHub releases, verifies the
+asset's unique SHA-256 entry before extracting, verifies the installed binary
+reports that exact version, then appends the extraction directory to
 `$GITHUB_PATH` so later steps find `skill-detector` on `PATH`.
 
 The two halves resolve the asset differently, because each already knows its
@@ -63,10 +64,11 @@ own platform:
 | OS | maps `RUNNER_OS`: `Linux`→`linux`, `macOS`→`darwin`; throws on anything else | hardcodes `windows` — it only runs on Windows |
 | Arch | maps `RUNNER_ARCH`: `X64`→`amd64`, `ARM64`→`arm64`; throws on anything else | the same mapping, and the same refusal |
 | Asset | `skill-detector_<version>_<os>_<arch>.tar.gz` | `skill-detector_<version>_windows_<arch>.zip` |
-| Verify | `sha256sum --check`, falling back to `shasum -a 256` | `Get-FileHash -Algorithm SHA256`, compared against the line for this asset; throws if the asset is absent from `checksums.txt` |
+| Verify | extracts exactly one asset checksum and compares `sha256sum`/`shasum` output | `Get-FileHash -Algorithm SHA256`, compared against the line for this asset; throws if the asset is absent from `checksums.txt` |
 | Extract | `tar -xzf` | `Expand-Archive` |
 
-Both write the extraction directory to `$GITHUB_PATH` and record it in
+Both execute the extracted binary's `version` command, require the requested
+version, write the extraction directory to `$GITHUB_PATH`, and record it in
 `SCAN_ACTION_DETECTOR_DIR`. The asset name embeds the version without its
 leading `v`, on both sides.
 
@@ -141,7 +143,8 @@ Requires and re-raises `SCAN_EXIT_CODE`, with these policy exceptions:
 
 Anything else is re-raised untouched. `2` is a real threshold breach; `3`
 means the scan never ran. An unrecognised code is passed through rather than
-guessed at.
+guessed at. The composite marks this step `if: always()`, so an unexpected
+earlier step outcome cannot skip the final policy decision.
 
 The annotation's tail is event-aware: the comment steps only run on
 `pull_request`, so on any other trigger it points at the job log rather than at
@@ -258,9 +261,8 @@ escape hatch for a local source build, which carries the pinned ruleset but
 reports a development version string rather than the release tag. It is not
 meant for CI, and the harness says so loudly when it is set.
 
-`tests/pwsh/` — PowerShell-side harnesses. Each picks its runtime at startup —
-`pwsh` on `PATH` if present, otherwise a PowerShell container — and prints
-which it chose.
+`tests/pwsh/` — native PowerShell-side parse and execution harnesses. They
+require `pwsh` on `PATH` and return skip code 77 when it is unavailable.
 
 - `parse-all-ps1.sh` → `parse-all-ps1.ps1` parses every `scripts/*.ps1`. Files
   are discovered by glob, never listed; a parse error **and** a zero match both
@@ -275,11 +277,15 @@ which it chose.
   exact raw JSON bytes, deferred exits and all public step outputs.
 - `exec-reporting-ps1.sh` executes the shared renderer and PowerShell delivery
   path, including sticky update and inert fork logging.
+- `exec-install-ps1.sh` verifies both Windows architecture assets, checksums,
+  version matching, and adverse download/archive cases with local fixtures.
+- `exec-telemetry-ps1.sh` captures the exact ten fields locally and covers
+  malformed input and request timeout without network access.
 
-`.github/workflows/ci.yml` has nine jobs: `bats`, `pwsh-parse`,
-`pwsh-exec-delta`, `e2e-gate-defaults`, and five smoke jobs that run the real
-Action on real runners — `smoke-clean`, `smoke-malicious`,
-`smoke-pr-comment`, `smoke-pr-delta` and `smoke-pr-comment-windows`.
+`.github/workflows/ci.yml` adds a deterministic composite policy matrix, a
+Linux composite-equivalent harness, and a real `uses: ./` Linux/macOS/Windows
+output matrix to the existing Bats, PowerShell, real-engine, and PR-comment
+smoke jobs.
 
 Two things about the smoke jobs are load-bearing:
 

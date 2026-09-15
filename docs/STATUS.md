@@ -1,24 +1,22 @@
 # Status
 
-## M2 — Free scan-action relaunch
+## M3 — Free scan-action relaunch
 
-ST-8 through ST-11 implemented locally on the M1 base.
+ST-12, ST-13, and the locally implementable portion of ST-14 are complete on
+the immutable M2 base `6bc299704c3680a553c3046f3d25b41c2ca5bfbe`.
 
-- One bounded safe renderer owns Job Summary and PR comment presentation.
-- Fixed attribution and a dated published-rule allowlist prevent URL data leak.
-- Sticky delivery paginates, stands off for the App, avoids duplicate POSTs on
-  lookup failure, and compares fork head/base repository identity before token
-  delivery.
-- README onboarding is report-only and documents raw JSON/artifacts, exact
-  scope limits, forks, data flow, pinning, and default-on ten-field telemetry.
-- Detector remains `v0.10.0`; raw Quality output and telemetry payload/default
-  are unchanged.
-- Critical review fixes enforce typed v0.10.0 finding entries, fail closed on
-  malformed paginated comments, render Summary on every workflow trigger, and
-  keep hostile scan paths out of delta annotations.
-- Bash comment IDs are accepted only within jq's exact safe-integer range.
+- CI now has real `uses: ./` policy and supported-OS output matrices; synthetic
+  legs disable telemetry/comments. Final policy is `always()`.
+- Deterministic local matrices cover policy, delta, hostile rendering, delivery
+  events/forks/App/pagination/API failures, and exact ten-field privacy capture.
+- POSIX and Windows installer fixtures cover exact v0.10.0 assets, checksum,
+  version, tamper, missing checksum, download failure, and unsupported arch.
+- The README candidate is independently copied and parsed in a disposable
+  harness. Complete raw JSON remains unchanged after expected report-only blocks.
+- M1/M2 public inputs, outputs, defaults, detector pin, telemetry payload and
+  default, safe rendering, and sticky markers remain intact.
 
-Local Bats, shell/Python checks, native PowerShell reporting/scan/delta checks,
-real-engine policy fixtures, and the full local suite are phase acceptance
-surfaces. Cross-OS composite CI and the live rule-page release gate remain
-external release checks and were not triggered from this phase.
+Local acceptance commands and exact unavailable external requirements are in
+`docs/release-readiness.md`. No hosted workflow, comment, Summary acceptance,
+release, tag, Marketplace action, external private access, or live telemetry
+was performed in M3.

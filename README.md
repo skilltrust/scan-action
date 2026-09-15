@@ -88,7 +88,7 @@ Artifact retention and access then follow the repository's GitHub settings.
 | `delta` | `false` | Compare PR head with base. Doubles scan runtime. |
 | `telemetry` | `true` | Send the anonymous ten-field heartbeat below. |
 | `github-token` | `${{ github.token }}` | Same-repository PR comment token. Not passed to fork delivery. |
-| `detector-version` | `v0.10.0` | Exact detector release installed after checksum verification. |
+| `detector-version` | `v0.10.0` | Exact detector release installed after checksum and reported-version verification. |
 
 ## Outputs
 
@@ -219,7 +219,8 @@ the build.
 
 `skilltrust/scan-action@v1` follows compatible v1 releases. For immutable
 supply-chain pinning, use a reviewed full commit SHA. `detector-version` is
-already exact (`v0.10.0`) and its downloaded archive is checksum-verified.
+already exact (`v0.10.0`); its archive checksum and installed binary's reported
+version are verified before use.
 
 ## License
 

@@ -8,6 +8,12 @@ ROOT="$BATS_TEST_DIRNAME/../.."
   ! grep -qiE 'four-axis|four axis|precision|recall|accuracy|skilltrust\.app/ci|paid' "$ROOT/README.md"
 }
 
+@test "README: copied candidate parses and pins public input/output contracts" {
+  run bash "$BATS_TEST_DIRNAME/../e2e/readme-candidate.sh"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"readme-candidate:"*"passed"* ]]
+}
+
 @test "README: documents complete JSON artifact, boundary, hard skips, forks, and exact telemetry" {
   for text in scan-json-path actions/upload-artifact node_modules pull_request_target runner-local repo_hash telemetry:; do
     grep -qi "$text" "$ROOT/README.md"

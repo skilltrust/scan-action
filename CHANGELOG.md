@@ -24,6 +24,9 @@
 - Delta now scans the fetched commit with the head's scope controls, always
   cleans its worktree, and warns without changing the head gate when comparison
   is unavailable.
+- Verify the downloaded detector's exact checksum entry and reported version
+  before use. The final policy step now runs with `always()` so an unexpected
+  earlier step failure cannot bypass the gate.
 
 ## [1.10.0] — 2026-08-30
 
