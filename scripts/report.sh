@@ -61,7 +61,7 @@ if ! gh api --paginate --slurp "repos/$REPO/issues/$PR/comments?per_page=100" > 
   exit 0
 fi
 if ! IDS="$(jq -er --arg app "$APP_MARKER" --arg ours "$MARKER" '
-  def valid_id: type == "number" and . > 0 and floor == .;
+  def valid_id: type == "number" and . >= 1 and . <= 9007199254740991 and floor == .;
   if type == "array" and
      all(.[]; type == "array" and
        all(.[]; type == "object" and (.body | type == "string") and (.id | valid_id)))

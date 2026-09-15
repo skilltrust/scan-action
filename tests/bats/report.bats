@@ -76,14 +76,24 @@ teardown() { teardown_tmpdir; }
   [ "$(grep -c 'issues/42/comments?per_page=100' "$FAKE_GH_LOG")" -eq 1 ]
 }
 
-@test "report.sh: malformed paginated outer, page, entry, body, or id never writes" {
+@test "report.sh: safe maximum comment id remains patchable" {
+  export FAKE_GH_COMMENTS='[[{"id":9007199254740991,"body":"<!-- skilltrust:action:v1 -->\nold"}]]'
+  run bash "$BATS_TEST_DIRNAME/../../scripts/report.sh"
+  [ "$status" -eq 0 ]
+  grep -q 'PATCH repos/acme/widgets/issues/comments/9007199254740991' "$FAKE_GH_LOG"
+  [ "$(grep -c 'issues/42/comments?per_page=100' "$FAKE_GH_LOG")" -eq 1 ]
+}
+
+@test "report.sh: malformed, exponent, or out-of-safe-range ids never write" {
   for response in \
     '{bad' \
     '{}' \
     '[{}]' \
     '[["not-a-comment"]]' \
     '[[{"id":1,"body":false}]]' \
-    '[[{"id":"1","body":"ordinary"}]]'; do
+    '[[{"id":"1","body":"ordinary"}]]' \
+    '[[{"id":1e100,"body":"<!-- skilltrust:action:v1 -->"}]]' \
+    '[[{"id":9007199254740992,"body":"<!-- skilltrust:action:v1 -->"}]]'; do
     : > "$FAKE_GH_LOG"
     export FAKE_GH_COMMENTS="$response"
     run bash "$BATS_TEST_DIRNAME/../../scripts/report.sh"
