@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Lead Summary and PR comments with the issue count, actual check policy and
+  next step. Available PR delta separates new, already-on-base and fixed
+  findings; no comparison means current findings only, never run history.
+  Existing findings and scan metadata are collapsed; grades follow findings.
+  Keep the ten-head/ten-fixed detail budget and full-head gating unchanged.
 - Add a single hostile-data-safe renderer for every valid completed Job
   Summary and optional PR comment. Reports expose three public axes, cap and
   order findings by effective severity, retain complete raw JSON, use fixed

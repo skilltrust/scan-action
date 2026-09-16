@@ -107,7 +107,17 @@ Both OS wrappers invoke one `render.py`. It writes the marker-first
 every validated scan on every trigger regardless of comment configuration,
 token, fork, or App. Untrusted fields are flattened, escaped and bounded. Head findings use
 effective severity CRITICAL→INFO plus deterministic rule/path/line/index
-tie-breaks and cap at ten. Only Security, Permission hygiene, and Transparency
+tie-breaks within new/existing groups, with new first and a shared cap of ten.
+Fixed findings have a separate ten-item cap. The policy line mirrors final
+exit handling; delta never gates. Grades follow the findings.
+
+For available PR delta, the renderer subtracts `new_findings` as a multiset
+from head findings. Identity uses the source fields of detector v0.10.0's
+`pkg/delta.findingKey`: rule ID, file path, line, description (the detector
+hashes description with FNV-1a). It does not recompute the diff or line-shift
+pairing; those already happened in the detector. Remaining head occurrences
+are existing. An unmatched new occurrence makes comparison unavailable.
+Only Security, Permission hygiene, and Transparency
 are public; raw Quality stays an output. Rendering failure writes a controlled
 visible fallback, warns, and exits zero so it cannot replace scan policy.
 

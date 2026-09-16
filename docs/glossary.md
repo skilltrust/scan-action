@@ -17,7 +17,10 @@ lives in a shell script rather than in a program.
 
 `delta: true`. On pull-request triggers the Action also scans the base ref and
 runs the engine's `delta` sub-command, so the report shows public-axis movement
-and a bounded resolved-findings block instead of a head-only table.
+and new/existing/fixed groups instead of head-only current findings. “Fixed by
+this PR” means present on current base, absent from current head—not fixed
+since an earlier run. A finding added and removed within the PR is absent
+from both snapshots and is not reported as fixed. No run history is stored.
 
 It **doubles runtime**, because it means two full scans. Off by default. It
 also needs the base ref to be fetchable, which is why the documented workflow

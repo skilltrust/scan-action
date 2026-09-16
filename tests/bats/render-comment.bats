@@ -133,7 +133,7 @@ JSON
   export INPUT_REPORT_ONLY="false"
   export SCAN_EXIT_CODE="2"
   render
-  grep -q 'Threshold reached — blocking' "$RUNNER_TEMP/comment.md"
+  grep -q 'PR is blocked — configured threshold reached' "$RUNNER_TEMP/comment.md"
 }
 
 @test "safe renderer: below-threshold warning policy is nonblocking" {
@@ -143,7 +143,7 @@ JSON
   export SCAN_EXIT_CODE="1"
   render
   grep -q '| Mode | Gate policy |' "$RUNNER_TEMP/comment.md"
-  grep -q 'Findings below threshold — nonblocking' "$RUNNER_TEMP/comment.md"
+  grep -q 'PR is not blocked — findings below threshold' "$RUNNER_TEMP/comment.md"
 }
 
 @test "safe renderer: missing requested delta is unavailable, not zero" {
@@ -160,7 +160,7 @@ JSON
   export INPUT_DELTA_JSON="$RUNNER_TEMP/delta.json"
   export INPUT_DELTA_ENABLED="true"
   render
-  grep -q 'Showing 10 of 11 resolved findings' "$RUNNER_TEMP/comment.md"
+  grep -q 'Showing 10 of 11 fixed findings' "$RUNNER_TEMP/comment.md"
 }
 
 @test "safe renderer: render failure is visible and cannot fail scan policy" {
@@ -170,4 +170,21 @@ JSON
   grep -q 'report unavailable' "$RUNNER_TEMP/comment.md"
   grep -q 'policy.*unchanged' "$GITHUB_STEP_SUMMARY"
   [[ "$output" == *"::warning title=SkillTrust report unavailable::"* ]]
+}
+
+@test "report UX: asymmetric partition, policy matrix, bounds and temporal semantics" {
+  run python3 -B "$BATS_TEST_DIRNAME/../report_ux_test.py"
+  [ "$status" -eq 0 ]
+}
+
+@test "report UX: malformed delta preserves current findings and head policy" {
+  write_scan '[{"rule_id":"SD-004","severity":"critical","file_path":"a","line":1}]'
+  export SCAN_EXIT_CODE="2" INPUT_REPORT_ONLY="false" INPUT_DELTA_ENABLED="true"
+  export INPUT_DELTA_JSON="$RUNNER_TEMP/delta.json"
+  printf '{broken' > "$INPUT_DELTA_JSON"
+  render
+  grep -q 'PR is blocked' "$RUNNER_TEMP/comment.md"
+  grep -q 'Comparison unavailable' "$RUNNER_TEMP/comment.md"
+  grep -q '### Current findings (1)' "$RUNNER_TEMP/comment.md"
+  ! grep -q '### New in this PR\|### Fixed by this PR' "$RUNNER_TEMP/comment.md"
 }

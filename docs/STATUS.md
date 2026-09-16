@@ -1,22 +1,31 @@
 # Status
 
-## M3 — Free scan-action relaunch
+## ST-5 — Report UX, local candidate
 
-ST-12, ST-13, and the locally implementable portion of ST-14 are complete on
-the immutable M2 base `6bc299704c3680a553c3046f3d25b41c2ca5bfbe`.
+Base: remote `epic/ST-5-free-scan-action-relaunch`, verified at
+`e6c7832b8cb9df8237f819e2f98182578c86eb61`. Local branch:
+`feat/ST-5-report-ux`. No push, release, tag, or hosted workflow triggered.
 
-- CI now has real `uses: ./` policy and supported-OS output matrices; synthetic
-  legs disable telemetry/comments. Final policy is `always()`.
-- Deterministic local matrices cover policy, delta, hostile rendering, delivery
-  events/forks/App/pagination/API failures, and exact ten-field privacy capture.
-- POSIX and Windows installer fixtures cover exact v0.10.0 assets, checksum,
-  version, tamper, missing checksum, download failure, and unsupported arch.
-- The README candidate is independently copied and parsed in a disposable
-  harness. Complete raw JSON remains unchanged after expected report-only blocks.
-- M1/M2 public inputs, outputs, defaults, detector pin, telemetry payload and
-  default, safe rendering, and sticky markers remain intact.
+- Shared Summary/comment renderer now leads with count, actual check policy,
+  PR comparison and next action. New findings expand first; existing findings
+  collapse; fixed findings name base locations. Grades and metadata come last.
+- Detector v0.10.0 delta identity inspected at its release tag. New occurrences
+  are subtracted from head using the same identity fields, preserving counts.
+  Off/unavailable delta never claims new/existing/fixed counts. No run history.
+- Full-head gating, raw JSON, public API/defaults, telemetry, fixed links/UTM,
+  sticky marker, fork/App handling and pagination unchanged. Detail budgets
+  remain ten head plus ten fixed findings.
+- Local verification: 116 Bats tests, including eight Python UX tests; all six
+  native PowerShell harnesses (7.4.6 on Linux); real v0.10.0 gate-defaults and
+  m1-policy; local composite-equivalent harness. Bash/PowerShell reports match.
+- Real detector delta verified a shifted existing finding alongside two new,
+  two existing and one fixed. Fake API checks prove repeat PATCH to one comment
+  and independent lookup/POST for another PR; no GitHub writes performed.
+- Local GitHub-like GFM preview: Chromium at 1280 and 390 CSS px, DPR 2;
+  blocking, report-only/delta, unavailable, clean, no-surface and hostile data.
+  No page overflow with disclosures closed/open; existing disclosure click and
+  safe-link/hostile-markup DOM checks pass. Representative screenshots inspected.
 
-Local acceptance commands and exact unavailable external requirements are in
-`docs/release-readiness.md`. No hosted workflow, comment, Summary acceptance,
-release, tag, Marketplace action, external private access, or live telemetry
-was performed in M3.
+Limits: local Markdown preview is not GitHub-hosted rendering; narrow Chromium
+is not a physical phone. Native PowerShell ran on Linux, not Windows. Hosted
+acceptance and release requirements remain in `docs/release-readiness.md`.

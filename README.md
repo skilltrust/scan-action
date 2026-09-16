@@ -99,8 +99,14 @@ Artifact retention and access then follow the repository's GitHub settings.
 | `findings-count` | Total head finding count. |
 | `no-agent-surface` | `true` when no supported agent file was checked and no grade exists. |
 
-The Job Summary shows at most ten head findings, ordered by effective severity
-CRITICAL → INFO with a stable tie-break. The JSON output is never truncated.
+Job Summary and sticky PR comments lead with the issue count, Action check
+status, and next step. Grades and scan details follow the findings; a low
+grade does not itself mean the job fails. “PR is blocked” describes this
+Action check; GitHub branch protection determines whether it prevents merging.
+
+Reports show at most ten head findings (new first, then existing), ordered
+within each group by effective severity CRITICAL → INFO with a stable
+tie-break, plus at most ten fixed findings. The JSON output is never truncated.
 
 ## Policy and delta
 
@@ -120,6 +126,17 @@ The whole validated **head** result gates. `delta: 'true'` adds a base
 comparison for PR presentation only. Fetch, worktree, base scan, or delta
 failure is reported as **comparison unavailable**, never as zero change, and
 never replaces the head policy or JSON.
+
+With an available PR comparison, reports distinguish:
+
+- **New in this PR:** detector delta's new findings, expanded first.
+- **Already on base:** current head findings not counted as new, collapsed.
+- **Fixed by this PR:** findings present on the current base but absent from
+  the current head; locations refer to base. This can include removed files.
+
+There is no memory of earlier runs. A finding introduced and removed within
+the same PR is absent, not “fixed”. With delta off or unavailable, reports
+show **current findings** without claiming new/existing/fixed status.
 
 ## What is scanned
 

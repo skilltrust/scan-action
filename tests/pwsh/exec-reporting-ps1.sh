@@ -22,9 +22,21 @@ JSON
 
 pwsh -NoProfile -File "$ROOT/scripts/render-comment.ps1"
 [ "$(head -n 1 "$RUNNER_TEMP/comment.md")" = '<!-- skilltrust:action:v1 -->' ]
-grep -q 'Threshold reached — nonblocking' "$GITHUB_STEP_SUMMARY"
+grep -q 'PR is not blocked — report-only mode' "$GITHUB_STEP_SUMMARY"
 grep -q 'utm_content=pr_comment' "$RUNNER_TEMP/comment.md"
 grep -q 'utm_content=job_summary' "$GITHUB_STEP_SUMMARY"
+
+export INPUT_DELTA_ENABLED="true" INPUT_DELTA_JSON="$SCRATCH/delta.json"
+jq '{new_findings:[],resolved_findings:[],per_axis:{}}' "$INPUT_SCAN_JSON" > "$INPUT_DELTA_JSON"
+pwsh -NoProfile -File "$ROOT/scripts/render-comment.ps1"
+grep -q '0 new in this PR · 1 already on base · 0 fixed by this PR' "$RUNNER_TEMP/comment.md"
+export INPUT_REPORT_ONLY="false"
+pwsh -NoProfile -File "$ROOT/scripts/render-comment.ps1"
+grep -q 'PR is blocked — configured threshold reached' "$RUNNER_TEMP/comment.md"
+bash "$ROOT/scripts/render-comment.sh"
+cp "$RUNNER_TEMP/comment.md" "$SCRATCH/bash.md"
+pwsh -NoProfile -File "$ROOT/scripts/render-comment.ps1"
+cmp "$SCRATCH/bash.md" "$RUNNER_TEMP/comment.md"
 
 cp "$ROOT/tests/bats/fixtures/fake-gh.sh" "$SCRATCH/bin/gh"
 chmod +x "$SCRATCH/bin/gh"

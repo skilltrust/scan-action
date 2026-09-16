@@ -7,6 +7,7 @@ import json
 import os
 import re
 import unicodedata
+from collections import Counter
 from pathlib import Path
 
 MARKER = "<!-- skilltrust:action:v1 -->"
@@ -84,16 +85,46 @@ def finding_key(item):
 
 
 def outcome(scan, exit_code, report_only, warn_below, fail_no_surface):
-    findings = scan.get("findings") if isinstance(scan.get("findings"), list) else []
     if scan.get("no_agent_surface") is True:
-        return "Nothing checked — no grade" + (" — blocking" if fail_no_surface else " — nonblocking")
-    if exit_code == "0" and not findings:
-        return "Clean — no findings"
+        return ("blocked — no agent files checked; fail-on-no-agent-surface is enabled"
+                if fail_no_surface else "not blocked — no agent files checked")
+    if report_only and exit_code in {"0", "1", "2"}:
+        return "not blocked — report-only mode"
+    if exit_code == "0":
+        return "not blocked — no findings"
     if exit_code == "2":
-        return "Threshold reached" + (" — nonblocking" if report_only else " — blocking")
+        return "blocked — configured threshold reached"
     if exit_code == "1":
-        return "Findings below threshold" + (" — nonblocking" if report_only or warn_below else " — blocking")
-    return "Findings reported"
+        return ("not blocked — findings below threshold" if warn_below else
+                "blocked — findings below threshold; warn-on-below-threshold is disabled")
+    return "status unavailable — check the job result"
+
+
+def delta_identity(finding):
+    # Detector v0.10.0 pkg/delta.findingKey uses these fields (hashing only
+    # description). Compare the source fields, not a new fingerprint scheme.
+    # Its line-shift pairing has already happened in new_findings.
+    return tuple(finding.get(key, default) for key, default in (
+        ("rule_id", ""), ("file_path", ""), ("line", 0), ("description", "")))
+
+
+def partition(findings, delta):
+    """Subtract the detector's new occurrences; duplicate counts matter."""
+    for field in ("new_findings", "resolved_findings"):
+        if field not in delta or (delta[field] is not None and not isinstance(delta[field], list)):
+            raise ValueError("invalid delta findings")
+    budget = Counter(delta_identity(f) for f in (delta.get("new_findings") or []))
+    new, existing = [], []
+    for finding in findings:
+        key = delta_identity(finding)
+        if budget[key]:
+            new.append(finding)
+            budget[key] -= 1
+        else:
+            existing.append(finding)
+    if any(budget.values()):
+        raise ValueError("delta does not match head")
+    return new, existing
 
 
 def axis_table(scan, delta):
@@ -123,7 +154,10 @@ def render_finding(finding, published, content, resolved=False):
     location = f"{path}:{line}" if isinstance(line, int) and line > 0 else path
     explanation = scalar(finding, "diagnosis") or scalar(finding, "description") or "No explanation supplied."
     remediation = scalar(finding, "remediation") or "No remediation supplied."
-    prefix = "Resolved" if resolved else severity
+    prefix = "Fixed" if resolved else severity
+    if resolved:
+        return [f"- **{prefix}** · {rule} · {location} (base location)",
+                f"  - Previous finding: {safe(explanation)}"]
     return [
         f"- **{prefix}** · {rule} · {location}",
         f"  - Explanation: {safe(explanation)}",
@@ -133,37 +167,61 @@ def render_finding(finding, published, content, resolved=False):
 
 def render(scan, delta, published, content, args):
     findings = scan.get("findings") if isinstance(scan.get("findings"), list) else []
-    valid_findings = [(i, f) for i, f in enumerate(findings) if isinstance(f, dict)]
-    shown = [f for _, f in sorted(valid_findings, key=finding_key)[:MAX_FINDINGS]]
+    new, existing = [], []
+    if args.delta != "true" or args.event != "pull_request":
+        delta = None
+    if delta is not None:
+        try:
+            new, existing = partition(findings, delta)
+            resolved = delta.get("resolved_findings") or []
+            if not isinstance(resolved, list) or not all(isinstance(f, dict) for f in resolved):
+                raise ValueError("invalid fixed findings")
+        except (TypeError, AttributeError, ValueError):
+            delta = None
     no_surface = scan.get("no_agent_surface") is True
     report_only = args.report_only == "true"
     warn_below = args.warn_below == "true"
     fail_no_surface = args.fail_no_surface == "true"
-    heading = "## SkillTrust — Nothing was checked" if no_surface else "## SkillTrust scan"
-    lines = [heading, "", "| Run | Value |", "|---|---|"]
-    mode = "Report only" if report_only else "Gate policy"
-    checkout = "Pull request head" if args.event == "pull_request" else "Workflow checkout"
-    lines.extend(
-        [
-            f"| Scope | {safe(args.scope, 300)} |",
-            f"| Checkout | {checkout} |",
-            f"| Engine | skill-detector {safe(scalar(scan, 'version', 'unknown'), 40)} |",
-            f"| Mode | {mode} |",
-            f"| Outcome | **{outcome(scan, args.exit_code, report_only, warn_below, fail_no_surface)}** |",
-            f"| Files scanned | **{safe(scalar(scan, 'files_scanned', 0), 20)}** |",
-        ]
-    )
-    if args.delta == "true" and args.event == "pull_request":
-        lines.append(f"| Comparison | {'Available' if delta else '**Unavailable** — head result and policy unchanged'} |")
-    elif args.delta == "true":
-        lines.append("| Comparison | Unavailable — delta runs on pull requests only |")
+    heading = ("## SkillTrust — Nothing was checked" if no_surface else
+               f"## SkillTrust found {len(findings)} {'issue' if len(findings) == 1 else 'issues'}" if findings else
+               "## SkillTrust — Clean — no findings")
+    subject = "PR is" if args.event == "pull_request" else "This scan is"
+    lines = [heading, "", f"**{subject} {outcome(scan, args.exit_code, report_only, warn_below, fail_no_surface)}.**",
+             "", "This describes the Action check only; GitHub branch protection determines whether it prevents merging."]
+    if delta is not None:
+        lines.extend(["", f"**{len(new)} new in this PR · {len(existing)} already on base · {len(resolved)} fixed by this PR**",
+                      "", "Compared with the current base, not previous runs. Fixed means present on base and absent from head."])
     else:
-        lines.append("| Comparison | Off |")
-
+        reason = "Comparison off" if args.delta != "true" else "Comparison unavailable"
+        count = "" if no_surface else f"{len(findings)} current findings. "
+        lines.extend(["", f"{count}{reason}; new, existing and fixed status is unknown."])
     if no_surface:
-        lines.extend(["", "No supported agent configuration files were found. No grades are shown; this is not a clean verdict."])
+        lines.extend(["", "No supported agent configuration files were found. No grades are shown; this is not a clean verdict.",
+                      "", "**Next:** Check the selected path and supported agent files before relying on this scan."])
+    elif findings:
+        lines.extend(["", "**Next:** Review the issues below, starting with CRITICAL and HIGH, and apply the remediation where appropriate. The check uses all current findings, not just new ones."])
     else:
-        lines.extend(["", "### Public axes", "", *axis_table(scan, delta)])
+        lines.extend(["", "**Next:** No finding remediation is needed in the scanned scope. Review the rest of the PR as usual."])
+
+    remaining = MAX_FINDINGS
+    groups = [("New in this PR", new, False), ("Already on base", existing, True)] if delta is not None else [("Current findings", findings, False)]
+    if not no_surface:
+        for label, items, collapsed in groups:
+            shown = [f for _, f in sorted(enumerate(items), key=finding_key)[:remaining]]
+            remaining -= len(shown)
+            lines.extend(["", "<details>", f"<summary>{label} ({len(items)})</summary>", ""] if collapsed else ["", f"### {label} ({len(items)})", ""])
+            lines.append(f"Showing {len(shown)} of {len(items)} findings." if items else "_None._")
+            lines.append("")
+            for finding in shown:
+                lines.extend(render_finding(finding, published, content))
+            if collapsed:
+                lines.extend(["", "</details>"])
+    if delta is not None:
+        shown = [f for _, f in sorted(enumerate(resolved), key=finding_key)[:MAX_FINDINGS]]
+        lines.extend(["", f"### Fixed by this PR ({len(resolved)})", "",
+                      f"Showing {len(shown)} of {len(resolved)} fixed findings." if resolved else "_None._", ""])
+        for finding in shown:
+            lines.extend(render_finding(finding, published, content, resolved=True))
 
     warnings = scan.get("warnings") if isinstance(scan.get("warnings"), list) else []
     if warnings or (args.delta == "true" and args.event == "pull_request" and not delta):
@@ -176,22 +234,27 @@ def render(scan, delta, published, content, args):
             lines.append(f"- Showing {MAX_WARNINGS} of {len(warnings)} engine warnings.")
 
     if not no_surface:
-        lines.extend(["", f"### Findings ({len(findings)})", ""])
-        if not findings:
-            lines.append("_No findings._")
-        else:
-            lines.append(f"Showing {len(shown)} of {len(findings)} findings.")
-            lines.append("")
-            for finding in shown:
-                lines.extend(render_finding(finding, published, content))
-
-    resolved = delta.get("resolved_findings") if isinstance(delta, dict) and isinstance(delta.get("resolved_findings"), list) else []
-    resolved = [item for item in resolved if isinstance(item, dict)]
-    if resolved:
-        resolved_shown = resolved[:MAX_FINDINGS]
-        lines.extend(["", f"### Resolved ({len(resolved)})", "", f"Showing {len(resolved_shown)} of {len(resolved)} resolved findings.", ""])
-        for finding in resolved_shown:
-            lines.extend(render_finding(finding, published, content, resolved=True))
+        lines.extend(["", "### Grades for the current scan", "",
+                      "Grades describe findings, not whether this check fails. The policy above determines the check result.",
+                      "", *axis_table(scan, delta)])
+    lines.extend(["", "<details>", "<summary>Scan details and scope</summary>", "", "| Run | Value |", "|---|---|"])
+    mode = "Report only" if report_only else "Gate policy"
+    checkout = "Pull request head" if args.event == "pull_request" else "Workflow checkout"
+    lines.extend(
+        [
+            f"| Scope | {safe(args.scope, 300)} |",
+            f"| Checkout | {checkout} |",
+            f"| Engine | skill-detector {safe(scalar(scan, 'version', 'unknown'), 40)} |",
+            f"| Mode | {mode} |",
+            f"| Files scanned | **{safe(scalar(scan, 'files_scanned', 0), 20)}** |",
+        ]
+    )
+    if args.delta == "true" and args.event == "pull_request":
+        lines.append(f"| Comparison | {'Available' if delta else '**Unavailable** — head result and policy unchanged'} |")
+    elif args.delta == "true":
+        lines.append("| Comparison | Unavailable — delta runs on pull requests only |")
+    else:
+        lines.append("| Comparison | Off |")
 
     lines.extend(
         [
@@ -199,6 +262,8 @@ def render(scan, delta, published, content, args):
             "### Supported boundary",
             "",
             "SkillTrust checks supported agent configuration files in the selected scope. A clean result means no supported rule matched; it is not a guarantee that the repository is safe.",
+            "",
+            "</details>",
             "",
             "### Complete result",
             "",
@@ -229,7 +294,10 @@ def main():
 
     scan = load_json(args.scan)
     delta_path = os.environ.get("INPUT_DELTA_JSON", "")
-    delta = load_json(delta_path) if delta_path and os.path.isfile(delta_path) else None
+    try:
+        delta = load_json(delta_path) if args.delta == "true" and delta_path and os.path.isfile(delta_path) else None
+    except (OSError, ValueError):
+        delta = None
     published = load_published(args.published)
     comment = MARKER + "\n" + render(scan, delta, published, "pr_comment", args)
     summary = render(scan, delta, published, "job_summary", args)

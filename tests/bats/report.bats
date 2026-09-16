@@ -37,6 +37,24 @@ teardown() { teardown_tmpdir; }
   grep -q "PATCH repos/acme/widgets/issues/comments/777" "$FAKE_GH_LOG"
 }
 
+@test "report.sh: reruns update one PR comment; another PR has its own lookup" {
+  export FAKE_GH_COMMENTS='[[{"id":777,"body":"<!-- skilltrust:action:v1 -->\nold"}]]'
+  for body in 'first report' 'updated report'; do
+    printf '<!-- skilltrust:action:v1 -->\n%s\n' "$body" > "$RUNNER_TEMP/comment.md"
+    run bash "$BATS_TEST_DIRNAME/../../scripts/report.sh"
+    [ "$status" -eq 0 ]
+  done
+  [ "$(grep -c 'PATCH repos/acme/widgets/issues/comments/777' "$FAKE_GH_LOG")" -eq 2 ]
+  [ "$(grep -c 'issues/42/comments?per_page=100' "$FAKE_GH_LOG")" -eq 2 ]
+  : > "$FAKE_GH_LOG"
+  export INPUT_PULL_NUMBER="43" FAKE_GH_COMMENTS='[[]]'
+  run bash "$BATS_TEST_DIRNAME/../../scripts/report.sh"
+  [ "$status" -eq 0 ]
+  grep -q 'issues/43/comments?per_page=100' "$FAKE_GH_LOG"
+  grep -q 'issues/43/comments -F body=@' "$FAKE_GH_LOG"
+  ! grep -q 'PATCH\|issues/42' "$FAKE_GH_LOG"
+}
+
 @test "report.sh: compares repository identity and skips API for a true fork" {
   export INPUT_HEAD_REPOSITORY="contributor/widgets"
   run bash "$BATS_TEST_DIRNAME/../../scripts/report.sh"
