@@ -133,7 +133,7 @@ JSON
   export INPUT_REPORT_ONLY="false"
   export SCAN_EXIT_CODE="2"
   render
-  grep -q 'PR is blocked — configured threshold reached' "$RUNNER_TEMP/comment.md"
+  grep -q 'SkillTrust check will fail — configured threshold reached' "$RUNNER_TEMP/comment.md"
 }
 
 @test "safe renderer: below-threshold warning policy is nonblocking" {
@@ -143,7 +143,7 @@ JSON
   export SCAN_EXIT_CODE="1"
   render
   grep -q '| Mode | Gate policy |' "$RUNNER_TEMP/comment.md"
-  grep -q 'PR is not blocked — findings below threshold' "$RUNNER_TEMP/comment.md"
+  grep -q 'SkillTrust check passes — findings below threshold' "$RUNNER_TEMP/comment.md"
 }
 
 @test "safe renderer: missing requested delta is unavailable, not zero" {
@@ -183,7 +183,7 @@ JSON
   export INPUT_DELTA_JSON="$RUNNER_TEMP/delta.json"
   printf '{broken' > "$INPUT_DELTA_JSON"
   render
-  grep -q 'PR is blocked' "$RUNNER_TEMP/comment.md"
+  grep -q 'SkillTrust check will fail' "$RUNNER_TEMP/comment.md"
   grep -q 'Comparison unavailable' "$RUNNER_TEMP/comment.md"
   grep -q '### Current findings (1)' "$RUNNER_TEMP/comment.md"
   ! grep -q '### New in this PR\|### Fixed by this PR' "$RUNNER_TEMP/comment.md"

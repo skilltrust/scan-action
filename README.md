@@ -99,10 +99,11 @@ Artifact retention and access then follow the repository's GitHub settings.
 | `findings-count` | Total head finding count. |
 | `no-agent-surface` | `true` when no supported agent file was checked and no grade exists. |
 
-Job Summary and sticky PR comments lead with the issue count, Action check
+Job Summary and sticky PR comments lead with the current issue count, Action check
 status, and next step. Grades and scan details follow the findings; a low
-grade does not itself mean the job fails. “PR is blocked” describes this
-Action check; GitHub branch protection determines whether it prevents merging.
+grade does not itself mean the job fails. “SkillTrust check will fail” describes
+the Action policy, not branch protection. Only a required check blocks merging.
+Current counts exclude fixed findings, which are counted separately.
 
 Reports show at most ten head findings (new first, then existing), ordered
 within each group by effective severity CRITICAL → INFO with a stable
@@ -131,6 +132,8 @@ With an available PR comparison, reports distinguish:
 
 - **New in this PR:** detector delta's new findings, expanded first.
 - **Already on base:** current head findings not counted as new, collapsed.
+  The disclosure includes CRITICAL/HIGH counts even when details are truncated;
+  these are effective severities, not claims about which findings triggered policy.
 - **Fixed by this PR:** findings present on the current base but absent from
   the current head; locations refer to base. This can include removed files.
 

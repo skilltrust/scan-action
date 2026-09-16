@@ -35,12 +35,13 @@ class ReportUX(unittest.TestCase):
 
     def test_asymmetric_buckets_and_priority(self):
         text = self.render()
-        self.assertIn("1 new in this PR · 2 already on base · 4 fixed by this PR", text)
-        self.assertLess(text.index("PR is blocked"), text.index("1 new in this PR"))
+        self.assertIn("## SkillTrust — 3 current issues", text)
+        self.assertIn("**Current: 1 new in this PR · 2 already on base**  \n**Fixed by this PR: 4**", text)
+        self.assertLess(text.index("SkillTrust check will fail"), text.index("1 new in this PR"))
         self.assertLess(text.index("new credential access"), text.index("existing critical"))
         self.assertLess(text.index("Fixed by this PR (4)"), text.index("Grades for"))
         self.assertLess(text.index("Grades for"), text.index("| Scope |"))
-        self.assertIn("<summary>Already on base (2)</summary>", text)
+        self.assertIn("<summary>Already on base (2 · includes 1 CRITICAL, 1 HIGH)</summary>", text)
         self.assertIn("not previous runs", text)
         self.assertIn("(base location)", text)
         self.assertNotIn("Resolved", text)
@@ -88,9 +89,9 @@ class ReportUX(unittest.TestCase):
                 self.scan["findings"] = [] if code == "0" else [self.old]
                 blocked = not report_only and (code == "2" or (code == "1" and not warn_below))
                 text = self.render()
-                self.assertIn("PR is blocked" if blocked else "PR is not blocked", text)
+                self.assertIn("SkillTrust check will fail" if blocked else "SkillTrust check passes", text)
                 if report_only:
-                    self.assertIn("not blocked — report-only mode", text)
+                    self.assertIn("passes — report-only mode", text)
                 if code == "0":
                     self.assertIn("Clean — no findings", text)
 
@@ -102,7 +103,7 @@ class ReportUX(unittest.TestCase):
             self.args.report_only = str(report_only).lower()
             self.args.fail_no_surface = str(fail).lower()
             text = self.render()
-            self.assertIn("PR is blocked" if fail else "PR is not blocked", text)
+            self.assertIn("SkillTrust check will fail" if fail else "SkillTrust check passes", text)
             self.assertIn("Nothing was checked", text)
             self.assertNotIn("Clean", text)
             self.assertNotIn("| Security |", text)
@@ -115,8 +116,42 @@ class ReportUX(unittest.TestCase):
         self.args.exit_code = "0"
         self.delta = dict(new_findings=None, resolved_findings=None, per_axis={})
         text = self.render()
-        self.assertIn("0 new in this PR · 0 already on base · 0 fixed by this PR", text)
+        self.assertIn("**Current: 0 new in this PR · 0 already on base**  \n**Fixed by this PR: 0**", text)
         self.assertNotIn("new credential access", text)
+
+    def test_singular_title_and_fixed_count_are_separate(self):
+        self.scan["findings"] = [self.new]
+        text = self.render()
+        self.assertIn("## SkillTrust — 1 current issue\n", text)
+        self.assertIn("**Fixed by this PR: 4**", text)
+        self.assertNotIn("5 current", text)
+
+    def test_unknown_policy_never_claims_pass_or_merge_status(self):
+        for event, code, no_surface in itertools.product(("pull_request", "schedule"), ("", "3", "42"), (False, True)):
+            self.args.event, self.args.exit_code = event, code
+            self.args.report_only = "true"
+            self.scan["no_agent_surface"] = no_surface
+            text = self.render()
+            self.assertIn("SkillTrust check status unavailable", text)
+            self.assertNotIn("SkillTrust check passes", text)
+            self.assertNotIn("PR is", text)
+            if event == "schedule":
+                self.assertNotIn("blocks merging", text)
+
+    def test_base_only_critical_visible_in_summary_even_when_detail_budget_exhausted(self):
+        new = [finding(i, "new low", "LOW") for i in range(10)]
+        self.scan["findings"] = new + [dict(self.old, severity="LOW", effective_severity="CRITICAL"),
+                                      finding(99, "base high", "HIGH"), finding(100, "base low", "LOW")]
+        self.delta["new_findings"] = new
+        text = self.render()
+        self.assertIn("Already on base (3 · includes 1 CRITICAL, 1 HIGH)", text)
+        self.assertIn("Showing 0 of 3 findings", text)
+        self.assertEqual(text.count("  - Explanation:"), 10)
+        self.assertNotIn("existing critical", text)
+        self.assertNotIn("caused", text)
+        self.scan["findings"][-3]["effective_severity"] = "INFO"
+        self.scan["findings"][-2]["severity"] = "MEDIUM"
+        self.assertIn("<summary>Already on base (3)</summary>", self.render())
 
     def test_hostile_data_in_all_buckets_is_inert_and_total_head_cap_is_ten(self):
         hostile = '</details><script>alert(1)</script> ![x](https://evil.invalid) @everyone\n::error::boom'

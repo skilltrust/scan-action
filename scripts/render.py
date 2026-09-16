@@ -85,18 +85,18 @@ def finding_key(item):
 
 
 def outcome(scan, exit_code, report_only, warn_below, fail_no_surface):
-    if scan.get("no_agent_surface") is True:
-        return ("blocked — no agent files checked; fail-on-no-agent-surface is enabled"
-                if fail_no_surface else "not blocked — no agent files checked")
+    if exit_code == "0" and scan.get("no_agent_surface") is True:
+        return ("will fail — no agent files checked; fail-on-no-agent-surface is enabled"
+                if fail_no_surface else "passes — no agent files checked")
     if report_only and exit_code in {"0", "1", "2"}:
-        return "not blocked — report-only mode"
+        return "passes — report-only mode"
     if exit_code == "0":
-        return "not blocked — no findings"
+        return "passes — no findings"
     if exit_code == "2":
-        return "blocked — configured threshold reached"
+        return "will fail — configured threshold reached"
     if exit_code == "1":
-        return ("not blocked — findings below threshold" if warn_below else
-                "blocked — findings below threshold; warn-on-below-threshold is disabled")
+        return ("passes — findings below threshold" if warn_below else
+                "will fail — findings below threshold; warn-on-below-threshold is disabled")
     return "status unavailable — check the job result"
 
 
@@ -183,23 +183,23 @@ def render(scan, delta, published, content, args):
     warn_below = args.warn_below == "true"
     fail_no_surface = args.fail_no_surface == "true"
     heading = ("## SkillTrust — Nothing was checked" if no_surface else
-               f"## SkillTrust found {len(findings)} {'issue' if len(findings) == 1 else 'issues'}" if findings else
+               f"## SkillTrust — {len(findings)} current {'issue' if len(findings) == 1 else 'issues'}" if findings else
                "## SkillTrust — Clean — no findings")
-    subject = "PR is" if args.event == "pull_request" else "This scan is"
-    lines = [heading, "", f"**{subject} {outcome(scan, args.exit_code, report_only, warn_below, fail_no_surface)}.**",
-             "", "This describes the Action check only; GitHub branch protection determines whether it prevents merging."]
+    lines = [heading, "", f"**SkillTrust check {outcome(scan, args.exit_code, report_only, warn_below, fail_no_surface)}.**"]
+    if args.event == "pull_request":
+        lines.extend(["", "If this check is required, failure blocks merging."])
     if delta is not None:
-        lines.extend(["", f"**{len(new)} new in this PR · {len(existing)} already on base · {len(resolved)} fixed by this PR**",
-                      "", "Compared with the current base, not previous runs. Fixed means present on base and absent from head."])
+        lines.extend(["", f"**Current: {len(new)} new in this PR · {len(existing)} already on base**  ",
+                      f"**Fixed by this PR: {len(resolved)}**",
+                      "", "Current base vs head, not previous runs."])
     else:
         reason = "Comparison off" if args.delta != "true" else "Comparison unavailable"
-        count = "" if no_surface else f"{len(findings)} current findings. "
-        lines.extend(["", f"{count}{reason}; new, existing and fixed status is unknown."])
+        lines.extend(["", f"{reason}; new, existing and fixed status is unknown."])
     if no_surface:
         lines.extend(["", "No supported agent configuration files were found. No grades are shown; this is not a clean verdict.",
                       "", "**Next:** Check the selected path and supported agent files before relying on this scan."])
     elif findings:
-        lines.extend(["", "**Next:** Review the issues below, starting with CRITICAL and HIGH, and apply the remediation where appropriate. The check uses all current findings, not just new ones."])
+        lines.extend(["", "**Next:** Review CRITICAL/HIGH first, including those already on base. Policy uses all current findings."])
     else:
         lines.extend(["", "**Next:** No finding remediation is needed in the scanned scope. Review the rest of the PR as usual."])
 
@@ -209,7 +209,13 @@ def render(scan, delta, published, content, args):
         for label, items, collapsed in groups:
             shown = [f for _, f in sorted(enumerate(items), key=finding_key)[:remaining]]
             remaining -= len(shown)
-            lines.extend(["", "<details>", f"<summary>{label} ({len(items)})</summary>", ""] if collapsed else ["", f"### {label} ({len(items)})", ""])
+            if collapsed:
+                counts = Counter(effective(f) for f in items)
+                severe = ", ".join(f"{counts[s]} {s}" for s in ("CRITICAL", "HIGH") if counts[s])
+                detail = f" · includes {severe}" if severe else ""
+                lines.extend(["", "<details>", f"<summary>{label} ({len(items)}{detail})</summary>", ""])
+            else:
+                lines.extend(["", f"### {label} ({len(items)})", ""])
             lines.append(f"Showing {len(shown)} of {len(items)} findings." if items else "_None._")
             lines.append("")
             for finding in shown:
@@ -219,6 +225,7 @@ def render(scan, delta, published, content, args):
     if delta is not None:
         shown = [f for _, f in sorted(enumerate(resolved), key=finding_key)[:MAX_FINDINGS]]
         lines.extend(["", f"### Fixed by this PR ({len(resolved)})", "",
+                      "Present on base, absent from head.", "",
                       f"Showing {len(shown)} of {len(resolved)} fixed findings." if resolved else "_None._", ""])
         for finding in shown:
             lines.extend(render_finding(finding, published, content, resolved=True))

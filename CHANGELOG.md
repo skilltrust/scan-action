@@ -6,6 +6,8 @@
   next step. Available PR delta separates new, already-on-base and fixed
   findings; no comparison means current findings only, never run history.
   Existing findings and scan metadata are collapsed; grades follow findings.
+  Current counts exclude fixed findings. Check status does not claim merge
+  status; collapsed base findings expose effective CRITICAL/HIGH counts.
   Keep the ten-head/ten-fixed detail budget and full-head gating unchanged.
 - Add a single hostile-data-safe renderer for every valid completed Job
   Summary and optional PR comment. Reports expose three public axes, cap and
