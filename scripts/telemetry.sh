@@ -9,14 +9,15 @@ if [ -z "$SCAN" ] || [ ! -f "$SCAN" ]; then
   exit 0
 fi
 
-METRICS="$(jq -er '
+GRADE="$(jq -er '
   if type != "object" or (.findings | type) != "array" then error("invalid scan")
-  else [
-    (if .axes then ([.axes | to_entries[] | .value.grade] | sort | last) else "" end),
-    (.findings | length)
-  ] | @tsv end
+  elif .axes then ([.axes | to_entries[] | .value.grade] | sort | last)
+  else "" end
 ' "$SCAN" 2>/dev/null)" || exit 0
-IFS=$'\t' read -r GRADE FINDING_COUNT <<< "$METRICS"
+FINDING_COUNT="$(jq -er '
+  if type != "object" or (.findings | type) != "array" then error("invalid scan")
+  else (.findings | length) end
+' "$SCAN" 2>/dev/null)" || exit 0
 
 REPO_URL="${GITHUB_SERVER_URL:-https://github.com}/${GITHUB_REPOSITORY:-unknown/unknown}"
 REPO_HASH="$(printf '%s' "$REPO_URL" | shasum -a 256 | awk '{print $1}')"

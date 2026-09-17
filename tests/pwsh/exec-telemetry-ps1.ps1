@@ -45,6 +45,16 @@ try {
   if ((Get-FileHash -Algorithm SHA256 $scan).Hash -ne $before) { throw "scan JSON changed" }
 
   $script:Requests = @()
+  Set-Content -LiteralPath $scan -NoNewline -Value '{"findings":[],"no_agent_surface":true,"private_marker":"DO_NOT_SEND","file_path":"secret/path"}'
+  . (Join-Path $Root "scripts/telemetry.ps1")
+  if ($script:Requests.Count -ne 1) { throw "no-surface scan did not make exactly one request" }
+  $payload = $script:Requests[0].Body | ConvertFrom-Json
+  $keys = @($payload.PSObject.Properties.Name | Sort-Object)
+  if (Compare-Object $keys $expected) { throw "no-surface telemetry field set mismatch" }
+  if ($payload.grade -isnot [string] -or $payload.grade -ne "" -or $payload.finding_count -isnot [long] -or $payload.finding_count -ne 0) { throw "no-surface telemetry types or values mismatch" }
+  if ($script:Requests[0].Body -match 'private-owner|private-repo|DO_NOT_SEND|secret/path|utm_|no_agent_surface') { throw "no-surface private data leaked" }
+
+  $script:Requests = @()
   Set-Content -LiteralPath $scan -NoNewline -Value '{malformed'
   . (Join-Path $Root "scripts/telemetry.ps1")
   if ($script:Requests.Count -ne 0) { throw "malformed scan made a request" }

@@ -62,6 +62,24 @@ run_case empty 0 "$empty"
 grep -qx 'grade=' "$SCRATCH/empty.out"
 grep -qx 'no-agent-surface=true' "$SCRATCH/empty.out"
 
+assert_invalid_result() {
+  local label="$1" json="$2"
+  run_case "$label" 0 "$json"
+  grep -qx 'SCAN_EXIT_CODE=3' "$SCRATCH/$label.env"
+  grep -qx 'result-valid=false' "$SCRATCH/$label.out"
+  ! grep -q '^scan-json-path=' "$SCRATCH/$label.out"
+  ! grep -q '^grade=' "$SCRATCH/$label.out"
+}
+
+assert_invalid_result no-surface-string '{"findings":[],"no_agent_surface":"true"}'
+assert_invalid_result no-surface-number '{"findings":[],"no_agent_surface":1}'
+assert_invalid_result no-surface-false '{"findings":[],"no_agent_surface":false}'
+assert_invalid_result no-surface-null '{"findings":[],"no_agent_surface":null}'
+assert_invalid_result grade-array "{${axes/\"quality\":{\"grade\":\"A\"}/\"quality\":{\"grade\":[\"A\",\"B\"]}},\"findings\":[]}"
+assert_invalid_result grade-null "{${axes/\"quality\":{\"grade\":\"A\"}/\"quality\":{\"grade\":null}},\"findings\":[]}"
+assert_invalid_result grade-number "{${axes/\"quality\":{\"grade\":\"A\"}/\"quality\":{\"grade\":1}},\"findings\":[]}"
+assert_invalid_result grade-lowercase "{${axes/\"quality\":{\"grade\":\"A\"}/\"quality\":{\"grade\":\"a\"}},\"findings\":[]}"
+
 run_case tool-error 3 "$clean"
 grep -qx 'SCAN_EXIT_CODE=3' "$SCRATCH/tool-error.env"
 ! grep -q '^scan-json-path=' "$SCRATCH/tool-error.out"

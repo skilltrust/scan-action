@@ -77,17 +77,21 @@ try {
         $finding.line -isnot [long] -or $finding.line -lt 0) { throw "finding value" }
   }
   $findings = @($result.findings).Count
-  $noSurface = "no_agent_surface" -in $names -and $result.no_agent_surface -eq $true
-  if ($noSurface) {
+  $hasNoSurface = "no_agent_surface" -in $names
+  if ($hasNoSurface) {
+    if ($result.no_agent_surface -isnot [bool] -or $result.no_agent_surface -ne $true) { throw "no surface flag" }
     if ($findings -ne 0 -or "axes" -in $names -or $exit -ne 0) { throw "no surface" }
+    $noSurface = $true
     $grade = ""
   } else {
-    if ("no_agent_surface" -in $names -or "axes" -notin $names) { throw "axes" }
+    if ("axes" -notin $names -or $result.axes -isnot [pscustomobject]) { throw "axes" }
     foreach ($axis in @("security", "permission_hygiene", "transparency", "quality")) {
-      if ($axis -notin @($result.axes.PSObject.Properties.Name) -or
-          $result.axes.$axis.grade -notmatch '^[ABCDF]$') { throw "axis" }
+      if ($axis -notin @($result.axes.PSObject.Properties.Name)) { throw "axis" }
+      $axisGrade = $result.axes.$axis.grade
+      if ($axisGrade -isnot [string] -or $axisGrade -cnotmatch '^[ABCDF]$') { throw "axis" }
     }
     if (($exit -eq 0 -and $findings -ne 0) -or ($exit -ne 0 -and $findings -eq 0)) { throw "exit/result" }
+    $noSurface = $false
     $grade = $result.axes.quality.grade
   }
 } catch {

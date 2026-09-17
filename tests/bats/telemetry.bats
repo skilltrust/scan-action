@@ -71,6 +71,24 @@ teardown() { teardown_tmpdir; }
   grep -q -- '--max-time 3' "$FAKE_CURL_LOG"
 }
 
+@test "telemetry.sh: no-surface scan sends empty grade and numeric zero without leaking raw data" {
+  printf '%s' '{"findings":[],"no_agent_surface":true,"private_marker":"DO_NOT_SEND","file_path":"secret/path"}' > "$INPUT_SCAN_JSON"
+  run bash "$BATS_TEST_DIRNAME/../../scripts/telemetry.sh"
+  [ "$status" -eq 0 ]
+  [ "$(wc -l < "$FAKE_CURL_LOG")" -eq 1 ]
+  body="$(cat "$FAKE_CURL_BODY")"
+  [ "$(jq 'keys | length' <<< "$body")" -eq 10 ]
+  [ "$(jq -r 'keys | join(",")' <<< "$body")" = 'action_version,delta_enabled,detector_version,finding_count,grade,repo_hash,repo_visibility,runner_arch,runner_os,trigger' ]
+  jq -e '
+    .grade == "" and (.grade | type == "string") and
+    .finding_count == 0 and (.finding_count | type == "number") and
+    .delta_enabled == false and (.delta_enabled | type == "boolean")
+  ' <<< "$body"
+  [[ "$body" != *"private-owner"* && "$body" != *"private-repo"* ]]
+  [[ "$body" != *"DO_NOT_SEND"* && "$body" != *"secret/path"* ]]
+  [[ "$body" != *"utm_"* && "$body" != *"no_agent_surface"* ]]
+}
+
 @test "telemetry.sh: succeeds even if curl fails (fire-and-forget)" {
   cat > "$TMPDIR_TEST/curl" <<'EOF'
 #!/usr/bin/env bash
