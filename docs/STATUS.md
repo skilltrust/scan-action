@@ -27,9 +27,10 @@ release, tag, floating-v1 move or Marketplace change was performed.
 - Compatible v1.11.0 Action metadata is prepared locally. ST-23 remains NO-GO
   until the Pencil-approved site design ships at `/docs/action`; no release,
   tag, floating-v1 move or Marketplace change was performed.
-- Final relaunch review fixes fail closed on non-Boolean no-surface flags and
-  non-string/non-uppercase PowerShell grades. No-surface telemetry now retains
-  the empty grade and numeric zero count without changing its field set.
+- Final relaunch review fixes fail closed on non-Boolean no-surface flags,
+  malformed axis objects and non-string/non-uppercase PowerShell grades.
+  No-surface telemetry now retains the empty grade and numeric zero count
+  without changing its field set.
 - Local verification: 119 Bats tests, including thirteen Python UX tests; all
   six native PowerShell harnesses (7.6.6 on Linux); real v0.10.0 gate-defaults
   and m1-policy; local composite-equivalent harness. Bash/PowerShell parity and

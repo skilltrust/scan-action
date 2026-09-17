@@ -75,6 +75,7 @@ assert_invalid_result no-surface-string '{"findings":[],"no_agent_surface":"true
 assert_invalid_result no-surface-number '{"findings":[],"no_agent_surface":1}'
 assert_invalid_result no-surface-false '{"findings":[],"no_agent_surface":false}'
 assert_invalid_result no-surface-null '{"findings":[],"no_agent_surface":null}'
+assert_invalid_result axis-array "{${axes/\"quality\":{\"grade\":\"A\"}/\"quality\":[{\"grade\":\"A\"}]},\"findings\":[]}"
 assert_invalid_result grade-array "{${axes/\"quality\":{\"grade\":\"A\"}/\"quality\":{\"grade\":[\"A\",\"B\"]}},\"findings\":[]}"
 assert_invalid_result grade-null "{${axes/\"quality\":{\"grade\":\"A\"}/\"quality\":{\"grade\":null}},\"findings\":[]}"
 assert_invalid_result grade-number "{${axes/\"quality\":{\"grade\":\"A\"}/\"quality\":{\"grade\":1}},\"findings\":[]}"

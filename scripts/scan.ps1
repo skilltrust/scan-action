@@ -87,7 +87,9 @@ try {
     if ("axes" -notin $names -or $result.axes -isnot [pscustomobject]) { throw "axes" }
     foreach ($axis in @("security", "permission_hygiene", "transparency", "quality")) {
       if ($axis -notin @($result.axes.PSObject.Properties.Name)) { throw "axis" }
-      $axisGrade = $result.axes.$axis.grade
+      $axisResult = $result.axes.$axis
+      if ($axisResult -isnot [pscustomobject]) { throw "axis" }
+      $axisGrade = $axisResult.grade
       if ($axisGrade -isnot [string] -or $axisGrade -cnotmatch '^[ABCDF]$') { throw "axis" }
     }
     if (($exit -eq 0 -and $findings -ne 0) -or ($exit -ne 0 -and $findings -eq 0)) { throw "exit/result" }

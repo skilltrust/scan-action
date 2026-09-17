@@ -164,13 +164,14 @@ EOF
   done
 }
 
-@test "scan.sh: rejects non-boolean no-surface flags and non-string or non-uppercase grades" {
+@test "scan.sh: rejects non-boolean no-surface flags and malformed axes or grades" {
   local json
   for json in \
     '{"findings":[],"no_agent_surface":"true"}' \
     '{"findings":[],"no_agent_surface":1}' \
     '{"findings":[],"no_agent_surface":false}' \
     '{"findings":[],"no_agent_surface":null}' \
+    "$(graded_scan_json | jq -c '.axes.quality = [.axes.quality]')" \
     "$(graded_scan_json | jq -c '.axes.quality.grade = ["A", "B"]')" \
     "$(graded_scan_json | jq -c '.axes.quality.grade = null')" \
     "$(graded_scan_json | jq -c '.axes.quality.grade = 1')" \
