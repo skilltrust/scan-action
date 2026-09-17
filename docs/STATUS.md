@@ -1,6 +1,6 @@
 # Status
 
-## v1.11.0 release candidate — 2026-09-17
+## v1.11.0 released — 2026-09-17
 
 PR #23 merged the post-relaunch behavior and documentation fixes. Hosted CI
 passed the Linux, macOS and Windows composite/smoke matrix, native PowerShell
@@ -21,9 +21,12 @@ pages now return HTTP 200; public `/ci` remains 404.
   defaults and m1-policy; local composite-equivalent and README contracts; full
   hosted PR checks and CodeQL on the accepted follow-up.
 
-Action metadata and dated release notes are prepared for v1.11.0. The immutable
-tag, floating `v1`, consumer smoke and Marketplace owner verification remain.
-See release-readiness.
+Immutable `v1.11.0` and floating `v1` resolve to release commit `38647dbc`.
+Release workflow 35260091823 passed its live rule-page gate and moved `v1`.
+Downloaded `v1` and `v1.11.0` archives are identical; metadata checks and the
+extracted composite policy/output matrix pass. Public Marketplace search still
+shows no SkillTrust listing; authenticated owner verification remains. See
+release-readiness.
 
 ## Historical post-merge documentation review — before behavior fixes
 

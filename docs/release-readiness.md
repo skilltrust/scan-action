@@ -30,29 +30,29 @@ also passed. The PR comment was updated in place and inspected at DPR2.
 Workflow success does not itself prove every Job Summary's visual body; item 4
 below remains the acceptance boundary.
 
-Action metadata is prepared for compatible version v1.11.0. No tag, floating
-`v1` move, GitHub Release or Marketplace change is implied by these checks.
+Compatible version v1.11.0 was released on 2026-09-17 at commit `38647dbc`.
+[Release workflow 35260091823](https://github.com/skilltrust/scan-action/actions/runs/35260091823)
+passed the live rule-page gate and moved floating `v1` to the same commit.
+Downloaded `v1` and `v1.11.0` archives were identical; metadata and the
+extracted composite policy/output matrix passed. The workflow does not create
+a GitHub Release or publish/update a Marketplace listing.
 
 ## Release gate and owner operations
 
 - Live read-only checks on 2026-09-17: `/docs/action` and `/action` return 200,
   `/ci` returns 404, and all 25 allowlisted rule pages pass
   `tests/release/check-published-rules.sh`.
-- Before the tag, `v1` still resolves to v1.10.0. This release-preparation
-  change dates the changelog and removes the prerelease README notice; tag only
-  the final accepted merge commit.
+- Immutable `v1.11.0` and floating `v1` both resolve to the accepted release
+  commit. Changelog date, README and both telemetry version literals match it;
+  detector remains v0.10.0.
 - The visibility and checkout-label findings are merged with regression
   coverage and full hosted checks; see `STATUS.md`.
 - Complete the remaining hosted acceptance below, particularly rendered
   Summary, real fork/App delivery, and artifact retrieval/retention.
-- Confirm both telemetry version literals and the changelog are v1.11.0,
-  detector remains v0.10.0, and release points to the accepted tested commit.
-  Tag push triggers `release.yml`, whose final step force-moves `v1` after the
-  rule-page check. Do not push a tag merely to test readiness.
-- Separately verify Marketplace listing, metadata, README and release notes
-  describe the version actually shipped. This workflow neither creates a
-  GitHub Release nor publishes/updates a Marketplace listing; those are owner
-  operations requiring explicit approval.
+- Separately verify authenticated Marketplace owner state. Public exact search
+  did not expose a SkillTrust listing after release, so listing state must not
+  be inferred from tags. Any Marketplace publication/update remains a separate
+  owner operation.
 
 ## Local acceptance surface
 
