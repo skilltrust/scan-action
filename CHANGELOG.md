@@ -1,6 +1,6 @@
 # Changelog
 
-## [1.11.0] — Unreleased
+## [1.11.0] — 2026-09-17
 
 - Source telemetry visibility from event repository metadata on both OS paths.
   Map internal repositories to private and skip telemetry when visibility is

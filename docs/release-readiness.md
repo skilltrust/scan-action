@@ -6,12 +6,17 @@ must not be inferred from prepared workflow code.
 
 ## Hosted checks completed
 
-Post-merge review, 2026-09-17: current `origin/main` is PR #22's
-[merge commit](https://github.com/skilltrust/scan-action/commit/2c847f0de7193ab818d2965ec3df5ad9f1cd4de4).
-[CI 35254445155](https://github.com/skilltrust/scan-action/actions/runs/35254445155)
-and [CodeQL 35254457527](https://github.com/skilltrust/scan-action/actions/runs/35254457527)
-passed on that exact commit. The three PR-only delivery/delta jobs were skipped
-on this push run; do not treat this run as fresh PR-delivery acceptance.
+Post-merge fixes, 2026-09-17: PR
+[#23](https://github.com/skilltrust/scan-action/pull/23) merged telemetry
+visibility privacy and neutral checkout reporting after
+[CI 35257679617](https://github.com/skilltrust/scan-action/actions/runs/35257679617)
+passed the Linux/macOS/Windows matrix, PowerShell paths, policy matrix, PR
+comment and delta jobs. [CodeQL 35257676188](https://github.com/skilltrust/scan-action/actions/runs/35257676188)
+also passed. Current `main` is the accepted release candidate.
+
+The production site deployment completed after one transient dependency-proxy
+retry. `/action` and `/docs/action` return HTTP 200, `/ci` returns 404, and the
+canonical, sitemap, llms.txt, desktop, narrow and open-menu checks pass.
 
 Historical pre-merge evidence (not rerun by the post-merge review):
 
@@ -25,24 +30,19 @@ also passed. The PR comment was updated in place and inspected at DPR2.
 Workflow success does not itself prove every Job Summary's visual body; item 4
 below remains the acceptance boundary.
 
-This does not authorize or prove a merge, release, tag or Marketplace change.
-Action metadata is prepared for compatible version v1.11.0, but ST-23 remains
-NO-GO: the Pencil-approved site design must ship at `/docs/action` before the
-release link gate can pass.
+Action metadata is prepared for compatible version v1.11.0. No tag, floating
+`v1` move, GitHub Release or Marketplace change is implied by these checks.
 
-## Release blockers and owner operations
+## Release gate and owner operations
 
-- Live read-only check on 2026-09-17: `/docs/action` returned HTTP 404; all
-  25 allowlisted rule pages passed `tests/release/check-published-rules.sh`.
-  **The automated release gate checks rule pages only**, not `/docs/action`.
-  Verify the documentation page separately before authorizing a tag.
-- `v1` still resolves to v1.10.0, which has no `report-only` input. Do not
-  advertise the candidate quickstart as released. Evaluate a reviewed full
-  candidate SHA until release; set the changelog date and remove the README
-  prerelease notice as part of the approved release preparation.
-- The visibility and checkout-label findings are fixed locally with regression
-  coverage; see `STATUS.md`. Existing hosted runs cover the merge commit, not
-  these follow-up changes. Obtain hosted checks on the final accepted SHA.
+- Live read-only checks on 2026-09-17: `/docs/action` and `/action` return 200,
+  `/ci` returns 404, and all 25 allowlisted rule pages pass
+  `tests/release/check-published-rules.sh`.
+- Before the tag, `v1` still resolves to v1.10.0. This release-preparation
+  change dates the changelog and removes the prerelease README notice; tag only
+  the final accepted merge commit.
+- The visibility and checkout-label findings are merged with regression
+  coverage and full hosted checks; see `STATUS.md`.
 - Complete the remaining hosted acceptance below, particularly rendered
   Summary, real fork/App delivery, and artifact retrieval/retention.
 - Confirm both telemetry version literals and the changelog are v1.11.0,
