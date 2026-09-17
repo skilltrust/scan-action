@@ -145,6 +145,8 @@ the PR head SHA (or the push SHA); without that `ref`, GitHub's default PR
 checkout is a synthetic merge commit, not the PR head. The base comparison
 uses the base branch tip fetched when the Action runs, not a merge base or a
 previous run. Custom checkouts change the compared tree accordingly.
+Reports label this neutrally as **Workflow checkout**: the event alone cannot
+prove whether the caller checked out a merge commit, PR head, or custom ref.
 
 With an available PR comparison, reports distinguish:
 
@@ -222,7 +224,7 @@ and GitHub policy.
 
 ### Default-on telemetry
 
-Once per validated run, the Action sends exactly these ten fields to
+For validated runs with known repository visibility, the Action sends exactly these ten fields to
 `https://skilltrust.app/api/telemetry/action-run`:
 
 ```json
@@ -243,6 +245,10 @@ Once per validated run, the Action sends exactly these ten fields to
 `repo_hash` is a stable pseudonymous identifier for the same GitHub repository;
 it is not the repository name. Telemetry is time-limited and can never fail
 the build.
+
+Visibility comes from GitHub's event repository metadata: `public` stays
+`public`; `private` and `internal` are sent as `private`. If visibility is
+missing or unrecognized, no heartbeat is sent rather than guessing `public`.
 
 **Opt out explicitly:**
 

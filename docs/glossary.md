@@ -141,7 +141,7 @@ read-only token.
 
 ### Telemetry payload
 
-Ten pseudonymous fields POSTed once per validated run: the Action and engine versions, the
+Ten pseudonymous fields POSTed at most once per validated run: the Action and engine versions, the
 runner OS and architecture, the repository's visibility, a **hash** of the
 repository URL, the grade, the finding count, the trigger, and whether delta
 was enabled. No repository name, no paths, no branch, no commit, no finding

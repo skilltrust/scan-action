@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
-# Fire-and-forget anonymous install heartbeat. Never fails the action.
+# Fire-and-forget pseudonymous scan heartbeat. Never fails the action.
+# INPUT_REPO_VISIBILITY: event repository visibility, supplied by action.yml.
+# Unknown visibility skips the request; internal is private on the wire.
 set +e
 
 INGEST_URL="${INPUT_TELEMETRY_URL:-https://skilltrust.app/api/telemetry/action-run}"
@@ -22,10 +24,11 @@ FINDING_COUNT="$(jq -er '
 REPO_URL="${GITHUB_SERVER_URL:-https://github.com}/${GITHUB_REPOSITORY:-unknown/unknown}"
 REPO_HASH="$(printf '%s' "$REPO_URL" | shasum -a 256 | awk '{print $1}')"
 
-VISIBILITY="public"
-if [ "${GITHUB_REPOSITORY_VISIBILITY:-public}" != "public" ]; then
-  VISIBILITY="private"
-fi
+case "${INPUT_REPO_VISIBILITY:-}" in
+  public) VISIBILITY=public ;;
+  private|internal) VISIBILITY=private ;;
+  *) exit 0 ;;
+esac
 
 PAYLOAD="$(jq -enc \
   --arg av  "${INPUT_ACTION_VERSION:-unknown}" \

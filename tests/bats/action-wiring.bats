@@ -61,6 +61,17 @@ WORKFLOW="$BATS_TEST_DIRNAME/../../.github/workflows/ci.yml"
   [ "$(grep -c 'INPUT_ACTION_VERSION:   1.11.0' "$ACTION")" -eq 2 ]
 }
 
+@test "action.yml: both telemetry steps receive event repository visibility without a public fallback" {
+  run ruby -ryaml -e '
+    action = YAML.safe_load(File.read(ARGV[0]), aliases: true)
+    steps = action.fetch("runs").fetch("steps").select { |s| s.fetch("run", "").match?(%r{/scripts/telemetry\.(sh|ps1)$}) }
+    raise "expected both telemetry branches" unless steps.length == 2
+    expected = "${{ github.event.repository.visibility }}"
+    raise "missing or unsafe visibility wiring" unless steps.all? { |s| s.dig("env", "INPUT_REPO_VISIBILITY") == expected }
+  ' "$ACTION"
+  [ "$status" -eq 0 ]
+}
+
 @test "ci.yml: every synthetic local composite invocation disables telemetry" {
   run ruby -ryaml -e '
     workflow = YAML.safe_load(File.read(ARGV[0]), aliases: true)

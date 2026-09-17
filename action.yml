@@ -213,6 +213,7 @@ runs:
         INPUT_ACTION_VERSION:   1.11.0
         INPUT_DETECTOR_VERSION: ${{ inputs.detector-version }}
         INPUT_DELTA_ENABLED:    ${{ inputs.delta }}
+        INPUT_REPO_VISIBILITY:  ${{ github.event.repository.visibility }}
       run: ${{ github.action_path }}/scripts/telemetry.sh
 
     - name: Send telemetry (Windows)
@@ -225,6 +226,7 @@ runs:
         INPUT_ACTION_VERSION:   1.11.0
         INPUT_DETECTOR_VERSION: ${{ inputs.detector-version }}
         INPUT_DELTA_ENABLED:    ${{ inputs.delta }}
+        INPUT_REPO_VISIBILITY:  ${{ github.event.repository.visibility }}
       run: ${{ github.action_path }}/scripts/telemetry.ps1
 
     # bash on every OS (Git Bash on Windows), so deliberately not a .ps1 pair —

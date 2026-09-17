@@ -1,6 +1,32 @@
 # Status
 
-## Post-merge documentation review — 2026-09-17
+## Post-merge behavior fixes — 2026-09-17
+
+Based on the same current `origin/main` merge commit linked below. The prior
+documentation commit is preserved; both behavior findings are now fixed.
+
+- Both telemetry steps pass event repository visibility explicitly. Exact
+  `public` sends public, `private`/`internal` send private; absent, unknown or
+  differently cased values send no heartbeat. No new payload fields or raw data.
+- Reports use "Workflow checkout" on every trigger. They do not infer actual
+  checkout identity from PR event metadata. README still selects PR head
+  explicitly; synthetic merge and custom checkouts get the same honest label.
+- Regression-first: new visibility and checkout tests failed on old POSIX
+  behavior; the new wiring test failed; native PowerShell failed with
+  `telemetry value mismatch`. All pass after the fixes.
+- Verification: 122/122 Bats tests; native PowerShell 7.6.6 on Linux (all six
+  parse/execution harnesses); pinned real detector v0.10.0 installer, gate
+  defaults and m1-policy; local composite-equivalent and README contracts.
+  No live telemetry or GitHub writes. Native Windows/macOS and hosted acceptance
+  for these follow-up commits still require owner-authorized CI.
+
+Release remains NO-GO for the site `/docs/action` 404 and outstanding hosted
+acceptance. This repository does not deploy the site. See release-readiness.
+
+## Historical post-merge documentation review — before behavior fixes
+
+The following records the initial findings and checks, not unresolved runtime
+defects or the current local tool availability.
 
 Reviewed exact current `origin/main`, PR #22's
 [merge commit](https://github.com/skilltrust/scan-action/commit/2c847f0de7193ab818d2965ec3df5ad9f1cd4de4).

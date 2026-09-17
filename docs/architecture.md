@@ -180,6 +180,7 @@ values are:
 | `scan-json-path` | step output | validated scan | delta (`INPUT_HEAD_SCAN_JSON`), render (`INPUT_SCAN_JSON`), telemetry (`INPUT_SCAN_JSON`), and callers |
 | `grade`, `findings-count`, `no-agent-surface` | step outputs | scan | propagate-exit (`INPUT_GRADE`, `INPUT_FINDINGS_COUNT`, `INPUT_NO_AGENT_SURFACE`), and callers |
 | `result-valid` | internal step output | scan | conditions for delta, render, comment, telemetry; not a public Action output |
+| `INPUT_REPO_VISIBILITY` | telemetry step env | `action.yml` from `github.event.repository.visibility` | both telemetry scripts; no public fallback |
 | `SCAN_EXIT_CODE` | `$GITHUB_ENV` | scan | propagate-exit, read straight from the environment |
 | `SCAN_ACTION_DELTA_JSON` | `$GITHUB_ENV` | delta | render (`INPUT_DELTA_JSON`) |
 | `delta-json-path` | step output | delta | nothing; `action.yml` uses the `$GITHUB_ENV` value instead |
@@ -249,6 +250,10 @@ Ten fields, with no raw repository contents: `action_version`,
 `grade`, `finding_count`, `trigger`, `delta_enabled`. `repo_hash` is a stable
 pseudonymous SHA-256 of the repository URL, not a name. No paths, finding
 contents, branch, commit, or token. Opt out with `telemetry: false`.
+
+Visibility accepts exact `public`, `private`, or `internal` event metadata.
+The latter two map to the existing wire value `private`. Missing or unknown
+visibility skips the heartbeat, preserving both the field set and scan policy.
 
 `action_version` is a literal in `action.yml`'s telemetry steps, not derived
 from the tag, so it has to be moved by hand at release time.

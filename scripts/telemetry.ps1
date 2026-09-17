@@ -1,4 +1,6 @@
 # Fire-and-forget. Never throw.
+# INPUT_REPO_VISIBILITY: event repository visibility, supplied by action.yml.
+# Unknown visibility skips the request; internal is private on the wire.
 try {
   $ingestUrl = if ($env:INPUT_TELEMETRY_URL) { $env:INPUT_TELEMETRY_URL } else { "https://skilltrust.app/api/telemetry/action-run" }
   $scan = $env:INPUT_SCAN_JSON
@@ -15,7 +17,12 @@ try {
   $bytes    = [System.Text.Encoding]::UTF8.GetBytes($repoUrl)
   $hash     = -join (($sha256.ComputeHash($bytes)) | ForEach-Object { $_.ToString("x2") })
 
-  $visibility = if ($env:GITHUB_REPOSITORY_VISIBILITY -and $env:GITHUB_REPOSITORY_VISIBILITY -ne "public") { "private" } else { "public" }
+  $visibility = switch -CaseSensitive ($env:INPUT_REPO_VISIBILITY) {
+    "public" { "public" }
+    "private" { "private" }
+    "internal" { "private" }
+    default { return }
+  }
 
   $payload = @{
     action_version   = $env:INPUT_ACTION_VERSION

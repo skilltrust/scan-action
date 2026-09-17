@@ -40,8 +40,9 @@ release link gate can pass.
   advertise the candidate quickstart as released. Evaluate a reviewed full
   candidate SHA until release; set the changelog date and remove the README
   prerelease notice as part of the approved release preparation.
-- Resolve or explicitly accept the behavior findings in `STATUS.md`; this
-  documentation review does not change their implementation.
+- The visibility and checkout-label findings are fixed locally with regression
+  coverage; see `STATUS.md`. Existing hosted runs cover the merge commit, not
+  these follow-up changes. Obtain hosted checks on the final accepted SHA.
 - Complete the remaining hosted acceptance below, particularly rendered
   Summary, real fork/App delivery, and artifact retrieval/retention.
 - Confirm both telemetry version literals and the changelog are v1.11.0,
