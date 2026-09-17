@@ -9,12 +9,6 @@ The public report shows Security, Permission hygiene, and Transparency.
 
 ## Quickstart: report only
 
-**Release status:** this documents the unreleased v1.11.0 candidate. Until
-v1.11.0 is released and `v1` moves, the `@v1` examples below resolve to v1.10.0,
-which does not support `report-only`. For pre-release evaluation, replace the
-Action ref with a reviewed full candidate commit SHA; do not assume `@v1`
-already provides nonblocking findings. See [release readiness](docs/release-readiness.md).
-
 Copy `.github/workflows/skilltrust.yml`:
 
 ```yaml

@@ -1,9 +1,11 @@
 # Status
 
-## Post-merge behavior fixes — 2026-09-17
+## v1.11.0 release candidate — 2026-09-17
 
-Based on the same current `origin/main` merge commit linked below. The prior
-documentation commit is preserved; both behavior findings are now fixed.
+PR #23 merged the post-relaunch behavior and documentation fixes. Hosted CI
+passed the Linux, macOS and Windows composite/smoke matrix, native PowerShell
+paths, PR comment/delta jobs and CodeQL. The production product and reference
+pages now return HTTP 200; public `/ci` remains 404.
 
 - Both telemetry steps pass event repository visibility explicitly. Exact
   `public` sends public, `private`/`internal` send private; absent, unknown or
@@ -16,12 +18,12 @@ documentation commit is preserved; both behavior findings are now fixed.
   `telemetry value mismatch`. All pass after the fixes.
 - Verification: 122/122 Bats tests; native PowerShell 7.6.6 on Linux (all six
   parse/execution harnesses); pinned real detector v0.10.0 installer, gate
-  defaults and m1-policy; local composite-equivalent and README contracts.
-  No live telemetry or GitHub writes. Native Windows/macOS and hosted acceptance
-  for these follow-up commits still require owner-authorized CI.
+  defaults and m1-policy; local composite-equivalent and README contracts; full
+  hosted PR checks and CodeQL on the accepted follow-up.
 
-Release remains NO-GO for the site `/docs/action` 404 and outstanding hosted
-acceptance. This repository does not deploy the site. See release-readiness.
+Action metadata and dated release notes are prepared for v1.11.0. The immutable
+tag, floating `v1`, consumer smoke and Marketplace owner verification remain.
+See release-readiness.
 
 ## Historical post-merge documentation review — before behavior fixes
 
