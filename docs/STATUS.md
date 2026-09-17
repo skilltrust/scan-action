@@ -1,10 +1,11 @@
 # Status
 
-## ST-5 — Report UX, local candidate
+## ST-5 — Report UX candidate
 
-Base: remote `epic/ST-5-free-scan-action-relaunch`, verified at
-`e6c7832b8cb9df8237f819e2f98182578c86eb61`. Local branch:
-`feat/ST-5-report-ux`. No push, release, tag, or hosted workflow triggered.
+Three report-UX commits are integrated on
+`epic/ST-5-free-scan-action-relaunch` after hosted-accepted base
+`e6c7832b8cb9df8237f819e2f98182578c86eb61`. PR #22 needs fresh hosted
+acceptance for this report change. No merge, release, or tag was performed.
 
 - Shared Summary/comment renderer now leads with count, actual check policy,
   PR comparison and next action. New findings expand first; existing findings
@@ -32,6 +33,12 @@ Base: remote `epic/ST-5-free-scan-action-relaunch`, verified at
 - Review follow-up rerenders additionally cover base-only CRITICAL, singular,
   unknown policy and below-threshold states. Top copy is shorter; no additional
   finding details or policy-cause attribution are introduced.
+- Independent critical review found two report-boundary gaps: malformed or
+  contradictory fixed delta entries could be presented as available, and an
+  invalid boolean input could be described as passing before final policy
+  rejected it. Both now fail closed. Scoped re-review passed after 13/13 Python
+  UX tests, 52/52 focused renderer/policy/delivery Bats tests, malformed delta
+  probes and direct parity checks against `propagate-exit.sh`.
 
 Limits: local Markdown preview is not GitHub-hosted rendering; narrow Chromium
 is not a physical phone. Native PowerShell ran on Linux, not Windows. Hosted
