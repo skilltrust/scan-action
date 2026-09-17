@@ -4,6 +4,22 @@ M3 implements ST-12, ST-13, and the local/reproducible portion of ST-14. This
 file separates local evidence from GitHub-hosted and live acceptance; the latter
 must not be inferred from prepared workflow code.
 
+## Hosted checks completed
+
+PR [#22](https://github.com/skilltrust/scan-action/pull/22) candidate
+`2be9d833f3b3315a7defe0556c7483f6cebc1ce4` completed the prepared hosted
+workflow on 2026-09-17. [CI run 35200736807](https://github.com/skilltrust/scan-action/actions/runs/35200736807)
+passed the policy matrix, real detector installation, Linux/macOS/Windows
+composite and smoke jobs, delta, sticky delivery and native Windows paths.
+[CodeQL run 35200734100](https://github.com/skilltrust/scan-action/actions/runs/35200734100)
+also passed. The PR comment was updated in place and inspected at DPR2.
+Workflow success does not itself prove every Job Summary's visual body; item 4
+below remains the acceptance boundary.
+
+This does not authorize or prove a merge, release, tag or Marketplace change.
+Release metadata still needs the selected version bump, and the site must ship
+`/docs/action` before the release link gate can pass.
+
 ## Local acceptance surface
 
 - `./scripts/run-tests.sh`: script policy, delta, delivery, rendering, privacy,
@@ -23,10 +39,10 @@ must not be inferred from prepared workflow code.
 All synthetic delivery and telemetry checks use local fakes. They make no API,
 comment, or telemetry request.
 
-## Prepared authorized GitHub acceptance
+## GitHub acceptance contract
 
-Run `.github/workflows/ci.yml` through the normal pull-request path only after
-authorization. Required green evidence:
+`.github/workflows/ci.yml` ran through the authorized normal pull-request path.
+The acceptance surface remains:
 
 1. `m3-composite-policy`: every synthetic case invokes `uses: ./`; verify all
    matrix legs, outputs, complete JSON, report-only/error distinction, and exit
@@ -48,13 +64,13 @@ authorization. Required green evidence:
 7. Run the release rule-page gate only when live network acceptance is
    authorized.
 
-## Deliberately unavailable in M3 local execution
+## Local-only boundaries
 
-- No GitHub-hosted Linux/macOS/Windows workflow was dispatched.
-- No live Job Summary or GitHub comment was created or visually accepted.
+- Local execution creates no GitHub-hosted workflow, Summary, comment or
+  artifact; the hosted evidence above owns those claims.
 - No real fork token boundary, App comment coexistence, API pagination, or
   GitHub 403/429/5xx response was exercised; deterministic fakes cover them.
 - No release, tag, Marketplace operation, external repository access, or live
   telemetry request was performed.
-- macOS/Windows release assets were validated through exact local fixture paths,
-  not executed on hosted native kernels. The prepared matrix owns that evidence.
+- Local macOS/Windows release assets use exact fixture paths; the hosted matrix
+  owns native-kernel evidence.

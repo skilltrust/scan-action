@@ -4,8 +4,12 @@
 
 Three report-UX commits are integrated on
 `epic/ST-5-free-scan-action-relaunch` after hosted-accepted base
-`e6c7832b8cb9df8237f819e2f98182578c86eb61`. PR #22 needs fresh hosted
-acceptance for this report change. No merge, release, or tag was performed.
+`e6c7832b8cb9df8237f819e2f98182578c86eb61`. PR #22 candidate
+`2be9d833f3b3315a7defe0556c7483f6cebc1ce4` passed fresh hosted
+[CI 35200736807](https://github.com/skilltrust/scan-action/actions/runs/35200736807)
+and [CodeQL 35200734100](https://github.com/skilltrust/scan-action/actions/runs/35200734100);
+its sticky comment was updated in place and inspected at DPR2. No merge,
+release, tag, floating-v1 move or Marketplace change was performed.
 
 - Shared Summary/comment renderer now leads with count, actual check policy,
   PR comparison and next action. New findings expand first; existing findings
@@ -41,5 +45,6 @@ acceptance for this report change. No merge, release, or tag was performed.
   probes and direct parity checks against `propagate-exit.sh`.
 
 Limits: local Markdown preview is not GitHub-hosted rendering; narrow Chromium
-is not a physical phone. Native PowerShell ran on Linux, not Windows. Hosted
-acceptance and release requirements remain in `docs/release-readiness.md`.
+is not a physical phone. Native local PowerShell ran on Linux; hosted Windows
+owns native evidence. Release requirements remain in
+`docs/release-readiness.md`.
