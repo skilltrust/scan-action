@@ -9,11 +9,15 @@ if [ -z "$SCAN" ] || [ ! -f "$SCAN" ]; then
   exit 0
 fi
 
-GRADE="$(jq -r '
-  if .axes then [.axes | to_entries[] | .value.grade] | sort | last
-  else "" end' "$SCAN")"
-[ "$GRADE" = "null" ] && GRADE=""
-FINDING_COUNT="$(jq -r '.findings | length // 0' "$SCAN")"
+GRADE="$(jq -er '
+  if type != "object" or (.findings | type) != "array" then error("invalid scan")
+  elif .axes then ([.axes | to_entries[] | .value.grade] | sort | last)
+  else "" end
+' "$SCAN" 2>/dev/null)" || exit 0
+FINDING_COUNT="$(jq -er '
+  if type != "object" or (.findings | type) != "array" then error("invalid scan")
+  else (.findings | length) end
+' "$SCAN" 2>/dev/null)" || exit 0
 
 REPO_URL="${GITHUB_SERVER_URL:-https://github.com}/${GITHUB_REPOSITORY:-unknown/unknown}"
 REPO_HASH="$(printf '%s' "$REPO_URL" | shasum -a 256 | awk '{print $1}')"
@@ -23,7 +27,7 @@ if [ "${GITHUB_REPOSITORY_VISIBILITY:-public}" != "public" ]; then
   VISIBILITY="private"
 fi
 
-PAYLOAD="$(jq -nc \
+PAYLOAD="$(jq -enc \
   --arg av  "${INPUT_ACTION_VERSION:-unknown}" \
   --arg dv  "${INPUT_DETECTOR_VERSION:-unknown}" \
   --arg os  "${RUNNER_OS:-unknown}" \
@@ -45,7 +49,7 @@ PAYLOAD="$(jq -nc \
     finding_count:    $fc,
     trigger:          $trg,
     delta_enabled:    $de
-  }')"
+  }')" || exit 0
 
 echo "telemetry.sh: POST $INGEST_URL"
 curl -fsS --max-time 3 -H "Content-Type: application/json" -X POST --data "$PAYLOAD" "$INGEST_URL" >/dev/null 2>&1 || true

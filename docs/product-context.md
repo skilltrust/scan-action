@@ -54,10 +54,9 @@ feel a false build failure, and they are the ones who switch a noisy gate off.
 Two things follow from that, and they run through every design decision in this
 repository:
 
-- **Everything runs inside the runner.** The scan is a released binary
-  executing on the user's own machine against the user's own checkout. Nothing
-  about the repository's contents leaves it, on public and private
-  repositories alike.
+- **Scanning runs inside the runner.** Results go only to configured GitHub
+  surfaces (Summary, optional comment/artifact), never to SkillTrust. The
+  documented anonymous telemetry heartbeat contains no repository contents.
 - **A gate that is wrong often gets deleted.** A finding that is reported but
   does not block is still a finding the team can see. A build that reddens on
   something the team disagrees with is gone by the end of the week, and it
@@ -79,7 +78,7 @@ and what is remembered.
 - **This Action.** Runs the same scan in the user's CI and gates the build on
   it.
 
-All three run the same rules and produce the same grades. See
+All three run the same rules. See
 [`cross-repo.md`](cross-repo.md) for how they are wired together.
 
 The Action and the GitHub App overlap on purpose, and a repository may run
@@ -91,9 +90,10 @@ from reporting while continuing to run the checks. See "Superseded comment" in
 
 ## What a result means
 
-A scan grades four axes on an A–F scale and reports the findings that drove
-each letter. The Action shows all of them and gates on a threshold the user
-sets.
+A scan produces four raw axes on an A–F scale. The Action's public human report
+shows Security, Permission hygiene, and Transparency; raw Quality remains the
+compatibility output. Gates use the detector's configured severity and axis
+policy.
 
 The grades are a statement about the files the rules actually read. When a scan
 finds no agent surface to inspect, it says so and issues no grades, rather than

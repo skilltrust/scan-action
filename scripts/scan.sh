@@ -19,6 +19,23 @@ SCAN_PATH="${INPUT_PATH:-.}"
 # they cannot drift.
 FAIL_ON="${INPUT_FAIL_ON:-critical}"
 
+OUT="$RUNNER_TEMP/scan.json"
+rm -f "$OUT"
+
+defer_failure() {
+  local code="${1:-3}"
+  [ -n "${GITHUB_ENV:-}" ] && echo "SCAN_EXIT_CODE=$code" >> "$GITHUB_ENV"
+  [ -n "${GITHUB_OUTPUT:-}" ] && echo "result-valid=false" >> "$GITHUB_OUTPUT"
+}
+
+for value in "${INPUT_STRICT_MCP:-false}" "${INPUT_SCAN_ALL:-false}"; do
+  if [ "$value" != "true" ] && [ "$value" != "false" ]; then
+    echo "::error title=SkillTrust::boolean inputs must be the string 'true' or 'false'"
+    defer_failure 3
+    exit 0
+  fi
+done
+
 ARGS=( "scan" "$SCAN_PATH" "--format" "json" "--fail-on" "$FAIL_ON" )
 
 if [ -n "${INPUT_FAIL_ON_AXIS:-}" ]; then
@@ -32,33 +49,62 @@ fi
 [ "${INPUT_STRICT_MCP:-false}" = "true" ] && ARGS+=( "--strict-mcp" )
 [ "${INPUT_SCAN_ALL:-false}"   = "true" ] && ARGS+=( "--scan-all" )
 
-OUT="$RUNNER_TEMP/scan.json"
 echo "scan.sh: running skill-detector ${ARGS[*]}"
 set +e
 skill-detector "${ARGS[@]}" > "$OUT"
 EXIT=$?
 set -e
 
-if [ -n "${GITHUB_ENV:-}" ]; then
-  echo "SCAN_EXIT_CODE=$EXIT" >> "$GITHUB_ENV"
-fi
-if [ -n "${GITHUB_OUTPUT:-}" ]; then
-  echo "scan-json-path=$OUT" >> "$GITHUB_OUTPUT"
+if [ "$EXIT" != "0" ] && [ "$EXIT" != "1" ] && [ "$EXIT" != "2" ]; then
+  defer_failure "$EXIT"
+  echo "scan.sh: detector failed with exit=$EXIT; no result outputs published"
+  exit 0
 fi
 
-# Extract grade + finding count from JSON (best-effort; absent fields render empty).
-if command -v jq >/dev/null 2>&1; then
-  GRADE="$(jq -r '
-    if .axes then
-      (.axes | to_entries | map(.value.grade) | sort | last) // ""
-    else "" end' "$OUT")"
-  FINDINGS="$(jq -r '.findings | length // 0' "$OUT")"
-  NO_SURFACE="$(jq -r 'if .no_agent_surface == true then "true" else "false" end' "$OUT")"
-  if [ -n "${GITHUB_OUTPUT:-}" ]; then
-    echo "grade=$GRADE"                 >> "$GITHUB_OUTPUT"
-    echo "findings-count=$FINDINGS"     >> "$GITHUB_OUTPUT"
-    echo "no-agent-surface=$NO_SURFACE" >> "$GITHUB_OUTPUT"
-  fi
+if ! command -v jq >/dev/null 2>&1 ||
+   ! jq -e --arg code "$EXIT" '
+      def grade: type == "string" and test("^[ABCDF]$");
+      def severity: type == "string" and test("^(CRITICAL|HIGH|MEDIUM|LOW|INFO)$");
+      def finding:
+        type == "object" and
+        (.rule_id | type == "string") and
+        (.severity | severity) and
+        (.effective_severity | severity) and
+        (.description | type == "string") and
+        (.file_path | type == "string") and
+        (.line | type == "number" and . >= 0 and floor == .) and
+        (.diagnosis | type == "string") and
+        (.remediation | type == "string");
+      . as $result |
+      (.findings | type == "array") and
+      (.findings | all(finding)) and
+      (if .no_agent_surface == true then
+         (.findings | length == 0) and (has("axes") | not) and ($code == "0")
+       else
+         (has("no_agent_surface") | not) and
+         (.axes | type == "object") and
+         (["security", "permission_hygiene", "transparency", "quality"] |
+           all(. as $axis | ($result.axes[$axis].grade | grade))) and
+         (if $code == "0" then (.findings | length == 0)
+          else (.findings | length > 0) end)
+       end)
+    ' "$OUT" 2>/dev/null | grep -qx true; then
+  echo "::error title=SkillTrust::detector returned a missing, empty, malformed, or invalid scan result"
+  defer_failure 3
+  exit 0
+fi
+
+GRADE="$(jq -r 'if .no_agent_surface == true then "" else .axes.quality.grade end' "$OUT")"
+FINDINGS="$(jq -r '.findings | length' "$OUT")"
+NO_SURFACE="$(jq -r '.no_agent_surface == true' "$OUT")"
+
+[ -n "${GITHUB_ENV:-}" ] && echo "SCAN_EXIT_CODE=$EXIT" >> "$GITHUB_ENV"
+if [ -n "${GITHUB_OUTPUT:-}" ]; then
+  echo "result-valid=true"              >> "$GITHUB_OUTPUT"
+  echo "scan-json-path=$OUT"            >> "$GITHUB_OUTPUT"
+  echo "grade=$GRADE"                   >> "$GITHUB_OUTPUT"
+  echo "findings-count=$FINDINGS"       >> "$GITHUB_OUTPUT"
+  echo "no-agent-surface=$NO_SURFACE"   >> "$GITHUB_OUTPUT"
 fi
 
 echo "scan.sh: detector exit=$EXIT, scan json at $OUT"

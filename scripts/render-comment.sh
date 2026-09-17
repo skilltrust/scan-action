@@ -1,104 +1,38 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-TEMPLATE_DIR="$(cd "$(dirname "$0")/.." && pwd)/templates"
-SCAN="$INPUT_SCAN_JSON"
-DELTA="${INPUT_DELTA_JSON:-}"
+# Required env: RUNNER_TEMP, INPUT_SCAN_JSON.
+# Optional: GITHUB_STEP_SUMMARY, GITHUB_EVENT_NAME, SCAN_EXIT_CODE and Action
+# inputs used only as report metadata.
+
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 OUT="$RUNNER_TEMP/comment.md"
+rm -f "$OUT"
 
-WORST_GRADE="$(jq -r '
-  if (.axes // {}) | length > 0 then
-    [.axes | to_entries[] | .value.grade] | sort | last
-  else "—" end' "$SCAN")"
-[ "$WORST_GRADE" = "null" ] && WORST_GRADE="—"
+ARGS=(
+  --scan "$INPUT_SCAN_JSON"
+  --published "$ROOT/config/published-rule-ids.txt"
+  --comment "$OUT"
+  --scope "${INPUT_PATH:-.}"
+  --event "${GITHUB_EVENT_NAME:-unknown}"
+  --exit-code "${SCAN_EXIT_CODE:-}"
+  --report-only "${INPUT_REPORT_ONLY:-false}"
+  --warn-below "${INPUT_WARN_ON_BELOW_THRESHOLD:-true}"
+  --fail-no-surface "${INPUT_FAIL_ON_NO_AGENT_SURFACE:-false}"
+)
+[ -n "${GITHUB_STEP_SUMMARY:-}" ] && ARGS+=( --summary "$GITHUB_STEP_SUMMARY" )
+[ "${INPUT_DELTA_ENABLED:-false}" = "true" ] && ARGS+=( --delta-enabled )
 
-DETECTOR_VERSION="$(jq -r '.version // "unknown"' "$SCAN")"
-[ "$DETECTOR_VERSION" = "null" ] && DETECTOR_VERSION="unknown"
-
-GRADE_DELTA=""
-WHY_BLOCK=""
-RESOLVED_BLOCK=""
-
-if [ -n "$DELTA" ] && [ -f "$DELTA" ]; then
-  WORST_OLD="$(jq -r '
-    if (.per_axis // {}) | length > 0 then
-      [.per_axis | to_entries[] | .value.Old | select(. != "")] | sort | last
-    else "" end' "$DELTA")"
-  if [ -n "$WORST_OLD" ] && [ "$WORST_OLD" != "null" ]; then
-    GRADE_DELTA=" (was $WORST_OLD)"
+if ! command -v python3 >/dev/null 2>&1 || ! python3 "$ROOT/scripts/render.py" "${ARGS[@]}"; then
+  printf '%s\n%s\n\n%s\n' \
+    '<!-- skilltrust:action:v1 -->' \
+    '## SkillTrust report unavailable' \
+    'The scan completed, but its report could not be rendered. The scan policy and validated JSON remain unchanged.' > "$OUT"
+  if [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
+    tail -n +2 "$OUT" >> "$GITHUB_STEP_SUMMARY" || true
   fi
-
-  AXIS_TABLE="| Axis | Grade | Δ |
-|------|-------|---|
-$(jq -r --slurpfile s "$SCAN" '
-    (.per_axis // {}) | to_entries | sort_by(.key)
-    | map(
-        . as $row |
-        ($s[0].axes[$row.key].grade // $row.value.New) as $g |
-        (if $row.value.Direction == "same" or $row.value.Old == "" then "—"
-         else (if $row.value.Direction == "up" then "↑" else "↓" end) + " " + $row.value.Old + " → " + $row.value.New end) as $delta |
-        "| \($row.key) | \($g) | \($delta) |"
-      ) | join("\n")' "$DELTA")"
-
-  WHY="$(jq -r '
-    (.axis_explanations // {}) | to_entries | sort_by(.key)
-    | map("- **\(.key):** \(.value)") | join("\n")' "$DELTA")"
-  if [ -n "$WHY" ] && [ "$WHY" != "null" ]; then
-    WHY_BLOCK="**Why downgraded:**
-$WHY"
-  fi
-
-  RESOLVED_COUNT="$(jq -r '.resolved_findings | length // 0' "$DELTA")"
-  if [ "$RESOLVED_COUNT" -gt 0 ]; then
-    RESOLVED_BLOCK="**Resolved ($RESOLVED_COUNT):**
-$(jq -r '.resolved_findings | map("- ✅ `" + .rule_id + "` " + (.axis // "") + " — " + (.description // "")) | join("\n")' "$DELTA")"
-  fi
-else
-  AXIS_TABLE="| Axis | Grade |
-|------|-------|
-$(jq -r '
-    if (.axes // {}) | length > 0 then
-      .axes | to_entries | sort_by(.key)
-        | map("| \(.key) | \(.value.grade) |") | join("\n")
-    else "| _no axes_ | — |" end' "$SCAN")"
+  echo "::warning title=SkillTrust report unavailable::scan completed but safe rendering failed; scan policy is unchanged"
+  exit 0
 fi
 
-FINDING_COUNT="$(jq -r '.findings | length' "$SCAN")"
-if [ "$FINDING_COUNT" -eq 0 ]; then
-  FINDINGS_BLOCK="_No findings._"
-else
-  FINDINGS_BLOCK="**Findings ($FINDING_COUNT):**
-$(jq -r '.findings | sort_by(.severity, .rule_id)[:10]
-    | map("- `" + .rule_id + "` " + (.axis // "") + " · `" + (.file_path // "") + ":" + (.line | tostring) + "` — " + (.description // "")) | join("\n")' "$SCAN")"
-fi
-
-NO_SURFACE="$(jq -r 'if .no_agent_surface == true then "true" else "false" end' "$SCAN")"
-
-if [ "$NO_SURFACE" = "true" ]; then
-  HEADING='## ∅ SkillTrust — Nothing was checked'
-  BODY_INTRO='No agent configuration files were found in this tree — no `SKILL.md`, `CLAUDE.md`, `AGENTS.md`, `.claude/`, `.agents/` or `.mcp.json`. There is no grade, and this is **not** a passing scan. If this repository has agent config, check the `path:` input.'
-  AXIS_TABLE=''
-  FINDINGS_BLOCK=''
-else
-  HEADING="## 🛡 SkillTrust — Trust Score **${WORST_GRADE}**${GRADE_DELTA}"
-  BODY_INTRO=''
-fi
-
-export WORST_GRADE AXIS_TABLE FINDINGS_BLOCK RESOLVED_BLOCK GRADE_DELTA WHY_BLOCK DETECTOR_VERSION HEADING BODY_INTRO
-
-python3 -c "
-import os, sys
-src = open(sys.argv[1]).read()
-out = (src
-    .replace('__HEADING__',          os.environ['HEADING'])
-    .replace('__BODY_INTRO__',       os.environ['BODY_INTRO'])
-    .replace('__GRADE_DELTA__',      os.environ['GRADE_DELTA'])
-    .replace('__AXIS_TABLE__',       os.environ['AXIS_TABLE'])
-    .replace('__WHY_BLOCK__',        os.environ['WHY_BLOCK'])
-    .replace('__FINDINGS_BLOCK__',   os.environ['FINDINGS_BLOCK'])
-    .replace('__RESOLVED_BLOCK__',   os.environ['RESOLVED_BLOCK'])
-    .replace('__DETECTOR_VERSION__', os.environ['DETECTOR_VERSION']))
-open(sys.argv[2], 'w').write(out)
-" "$TEMPLATE_DIR/comment.md.tmpl" "$OUT"
-
-echo "render-comment.sh: comment.md written to $OUT (delta=$([ -n "$DELTA" ] && echo yes || echo no))"
+echo "render-comment.sh: safe report written"

@@ -62,7 +62,7 @@ done
 echo "---" >> "$ARGS_LOG"
 case "$1" in
   scan)
-    echo '{"axes":{"security":{"grade":"A"}},"findings":[],"version":"0.3.1"}'
+    echo '{"axes":{"security":{"grade":"A"},"permission_hygiene":{"grade":"A"},"transparency":{"grade":"A"},"quality":{"grade":"A"}},"findings":[],"version":"0.10.0"}'
     ;;
   delta)
     cat <<'JSON'
@@ -99,7 +99,7 @@ run_case() {
   mkdir -p "$rtemp"
   local args_log="$rtemp/skill-detector-args.log"
   : > "$args_log"
-  echo '{"axes":{"security":{"grade":"B"}},"findings":[],"version":"0.3.1"}' > "$rtemp/scan.json"
+  echo '{"axes":{"security":{"grade":"B"},"permission_hygiene":{"grade":"B"},"transparency":{"grade":"B"},"quality":{"grade":"B"}},"findings":[],"version":"0.10.0"}' > "$rtemp/scan.json"
 
   local status=0
   env -i PATH="$PATH" HOME="$HOME" \
@@ -119,6 +119,7 @@ run_case() {
     echo "FAIL: $label delta.ps1 exited $status" >&2
     exit 1
   fi
+  [ -s "$rtemp/delta.json" ] || { echo "FAIL: $label did not publish validated delta JSON" >&2; exit 1; }
 
   # scan call must be the first block and must contain --strict-mcp / --scan-all
   # as their own ARG[] line iff the matching input was "true", never otherwise.
@@ -142,6 +143,19 @@ run_case() {
 run_case "strict-mcp" "true" "false"
 run_case "scan-all" "false" "true"
 run_case "neither" "false" "false"
+
+malicious_path=$'absent\n::error::injected\n::stop-commands::token'
+malicious_log="$HARNESS_SCRATCH/malicious-path.log"
+env -i PATH="$PATH" HOME="$HOME" \
+  RUNNER_TEMP="$HARNESS_SCRATCH/rtemp-malicious" \
+  INPUT_BASE_REF="main" \
+  INPUT_HEAD_SCAN_JSON="$HARNESS_SCRATCH/rtemp-neither/scan.json" \
+  INPUT_PATH="$malicious_path" \
+  ARGS_LOG="$HARNESS_SCRATCH/malicious-args.log" \
+  pwsh -NoProfile -File "$HARNESS_ROOT/scripts/delta.ps1" > "$malicious_log"
+[ "$(grep -c '^::warning' "$malicious_log")" -eq 1 ]
+grep -q 'selected path is absent' "$malicious_log"
+! grep -q '::error::injected\|::stop-commands::token' "$malicious_log"
 
 echo "ALL CASES PASSED"
 HARNESS_EOF

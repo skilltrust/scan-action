@@ -1,5 +1,40 @@
 # Changelog
 
+## [1.11.0] — 2026-09-17
+
+- Lead Summary and PR comments with the issue count, actual check policy and
+  next step. Available PR delta separates new, already-on-base and fixed
+  findings; no comparison means current findings only, never run history.
+  Existing findings and scan metadata are collapsed; grades follow findings.
+  Current counts exclude fixed findings. Check status does not claim merge
+  status; collapsed base findings expose effective CRITICAL/HIGH counts.
+  Keep the ten-head/ten-fixed detail budget and full-head gating unchanged.
+- Add a single hostile-data-safe renderer for every valid completed Job
+  Summary and optional PR comment. Reports expose three public axes, cap and
+  order findings by effective severity, retain complete raw JSON, use fixed
+  privacy-safe attribution, and make render failures visible without changing
+  policy. Summary rendering covers every workflow trigger; comments remain
+  pull-request-only.
+- Make comment delivery paginate and fail open without duplicate POSTs. Forks
+  compare head/base repository identity, receive no token, and use App-only PR
+  delivery; API/native failures preserve Summary and scan policy.
+- Replace onboarding with explicit nonblocking report-only quickstarts and
+  accurate scope, artifact, fork, pinning, boundary, and telemetry contracts.
+- Add `report-only: false`. When enabled, finding exits `1` and `2` report but
+  do not block; input, tool, install, integrity, and invalid-result failures do.
+- Validate scan and delta JSON before publishing outputs. Public outputs now
+  select the runner's actual scan branch and `grade` carries the raw Quality
+  axis. Findings require the typed v0.10.0 fields consumed by reporting;
+  invalid scans publish no success-shaped outputs.
+- Reject malformed paginated comment responses before any POST/PATCH, and keep
+  repository-controlled paths out of delta workflow-command warnings.
+- Delta now scans the fetched commit with the head's scope controls, always
+  cleans its worktree, and warns without changing the head gate when comparison
+  is unavailable.
+- Verify the downloaded detector's exact checksum entry and reported version
+  before use. The final policy step now runs with `always()` so an unexpected
+  earlier step failure cannot bypass the gate.
+
 ## [1.10.0] — 2026-08-30
 
 ### The engine pin moves to `v0.10.0` — a credential path spelled `$HOME/…` is now found

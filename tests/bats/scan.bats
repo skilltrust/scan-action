@@ -17,7 +17,7 @@ setup() {
 teardown() { teardown_tmpdir; }
 
 @test "scan.sh: writes scan.json to RUNNER_TEMP" {
-  export FAKE_DETECTOR_JSON='{"findings":[],"axes":{"security":{"grade":"A","rationale":""}},"files_scanned":1,"rules_applied":21}'
+  export FAKE_DETECTOR_JSON="$(graded_scan_json)"
   export INPUT_PATH="."
   export INPUT_FAIL_ON="high"
   export INPUT_FAIL_ON_AXIS=""
@@ -31,7 +31,7 @@ teardown() { teardown_tmpdir; }
 
 @test "scan.sh: captures non-zero detector exit code into GITHUB_ENV without failing the step" {
   export FAKE_DETECTOR_EXIT=2
-  export FAKE_DETECTOR_JSON='{"findings":[{"rule_id":"SD-001"}],"axes":{},"files_scanned":1,"rules_applied":21}'
+  export FAKE_DETECTOR_JSON="$(graded_scan_json '[{"rule_id":"SD-001","severity":"CRITICAL","effective_severity":"CRITICAL","description":"credential access","file_path":"AGENTS.md","line":3,"diagnosis":"dangerous access","remediation":"remove it","future_field":{"accepted":true}}]' D)"
   export INPUT_PATH="."
   export INPUT_FAIL_ON="high"
   export INPUT_FAIL_ON_AXIS=""
@@ -40,6 +40,24 @@ teardown() { teardown_tmpdir; }
   run bash "$BATS_TEST_DIRNAME/../../scripts/scan.sh"
   [ "$status" -eq 0 ]
   grep -q "SCAN_EXIT_CODE=2" "$GITHUB_ENV"
+  grep -q '^result-valid=true$' "$GITHUB_OUTPUT"
+}
+
+@test "scan.sh: non-object or mistyped finding on exits 1 and 2 becomes deferred failure" {
+  local json
+  for case in '1|["not-a-finding"]' '2|[{"rule_id":"SD-001","severity":"CRITICAL","effective_severity":"CRITICAL","description":"x","file_path":"a","line":"3","diagnosis":"x","remediation":"x"}]'; do
+    IFS='|' read -r FAKE_DETECTOR_EXIT findings <<< "$case"
+    export FAKE_DETECTOR_EXIT findings
+    json="$(graded_scan_json "$findings" D)"
+    export FAKE_DETECTOR_JSON="$json"
+    : > "$GITHUB_ENV"; : > "$GITHUB_OUTPUT"
+    run bash "$BATS_TEST_DIRNAME/../../scripts/scan.sh"
+    [ "$status" -eq 0 ]
+    grep -qx 'SCAN_EXIT_CODE=3' "$GITHUB_ENV"
+    grep -qx 'result-valid=false' "$GITHUB_OUTPUT"
+    ! grep -q '^scan-json-path=' "$GITHUB_OUTPUT"
+    [ "$(cat "$RUNNER_TEMP/scan.json")" = "$json" ]
+  done
 }
 
 @test "scan.sh: captures detector tool-error exit code 3 into GITHUB_ENV without failing the step" {
@@ -48,7 +66,7 @@ teardown() { teardown_tmpdir; }
   # threshold). The action passes it through opaquely via SCAN_EXIT_CODE,
   # same as any other non-zero code — this pins that round-trip.
   export FAKE_DETECTOR_EXIT=3
-  export FAKE_DETECTOR_JSON='{"findings":[],"axes":{},"files_scanned":0,"rules_applied":0}'
+  export FAKE_DETECTOR_JSON='{"error":"tool failed"}'
   export INPUT_PATH="."
   export INPUT_FAIL_ON="high"
   export INPUT_FAIL_ON_AXIS=""
@@ -60,7 +78,7 @@ teardown() { teardown_tmpdir; }
 }
 
 @test "scan.sh: threads --fail-on-axis when set" {
-  export FAKE_DETECTOR_JSON='{"findings":[],"axes":{},"files_scanned":0,"rules_applied":0}'
+  export FAKE_DETECTOR_JSON="$(graded_scan_json)"
   export INPUT_PATH="."
   export INPUT_FAIL_ON="high"
   export INPUT_FAIL_ON_AXIS="permission_hygiene=C,security=C"
@@ -91,7 +109,7 @@ EOF
 }
 
 @test "scan.sh: exports no-agent-surface=true when the scan checked nothing" {
-  export FAKE_DETECTOR_JSON='{"findings":[],"axes":{},"no_agent_surface":true,"files_scanned":3,"rules_applied":24}'
+  export FAKE_DETECTOR_JSON='{"findings":[],"no_agent_surface":true,"files_scanned":3,"rules_applied":24}'
   export INPUT_PATH="."
   export INPUT_FAIL_ON="high"
   export INPUT_FAIL_ON_AXIS=""
@@ -103,7 +121,7 @@ EOF
 }
 
 @test "scan.sh: exports no-agent-surface=false for a graded scan" {
-  export FAKE_DETECTOR_JSON='{"findings":[],"axes":{"security":{"grade":"A","rationale":""}},"files_scanned":1,"rules_applied":24}'
+  export FAKE_DETECTOR_JSON="$(graded_scan_json)"
   export INPUT_PATH="."
   export INPUT_FAIL_ON="high"
   export INPUT_FAIL_ON_AXIS=""
@@ -112,4 +130,80 @@ EOF
   run bash "$BATS_TEST_DIRNAME/../../scripts/scan.sh"
   [ "$status" -eq 0 ]
   grep -q '^no-agent-surface=false$' "$GITHUB_OUTPUT"
+}
+
+@test "scan.sh: publishes raw Quality grade, not worst axis" {
+  export FAKE_DETECTOR_JSON="$(graded_scan_json '[]' A)"
+  run bash "$BATS_TEST_DIRNAME/../../scripts/scan.sh"
+  [ "$status" -eq 0 ]
+  grep -q '^grade=A$' "$GITHUB_OUTPUT"
+}
+
+@test "scan.sh: malformed successful result becomes deferred failure with no public success outputs" {
+  export FAKE_DETECTOR_JSON='{not-json'
+  export FAKE_DETECTOR_EXIT=0
+  run bash "$BATS_TEST_DIRNAME/../../scripts/scan.sh"
+  [ "$status" -eq 0 ]
+  grep -q '^SCAN_EXIT_CODE=3$' "$GITHUB_ENV"
+  grep -q '^result-valid=false$' "$GITHUB_OUTPUT"
+  ! grep -q '^scan-json-path=' "$GITHUB_OUTPUT"
+  [ "$(cat "$RUNNER_TEMP/scan.json")" = '{not-json' ]
+}
+
+@test "scan.sh: missing, empty, and semantically invalid results fail validation" {
+  for json in ' ' '{}' \
+    '{"findings":[],"axes":{"security":{"grade":"Z"}}}' \
+    '{"findings":[],"no_agent_surface":true,"axes":{}}' \
+    "$(graded_scan_json '[{"rule_id":"impossible-clean"}]')"; do
+    : > "$GITHUB_ENV"; : > "$GITHUB_OUTPUT"
+    export FAKE_DETECTOR_JSON="$json" FAKE_DETECTOR_EXIT=0
+    run bash "$BATS_TEST_DIRNAME/../../scripts/scan.sh"
+    [ "$status" -eq 0 ]
+    grep -q '^SCAN_EXIT_CODE=3$' "$GITHUB_ENV"
+    ! grep -q '^scan-json-path=' "$GITHUB_OUTPUT"
+  done
+}
+
+@test "scan.sh: rejects non-boolean no-surface flags and malformed axes or grades" {
+  local json
+  for json in \
+    '{"findings":[],"no_agent_surface":"true"}' \
+    '{"findings":[],"no_agent_surface":1}' \
+    '{"findings":[],"no_agent_surface":false}' \
+    '{"findings":[],"no_agent_surface":null}' \
+    "$(graded_scan_json | jq -c '.axes.quality = [.axes.quality]')" \
+    "$(graded_scan_json | jq -c '.axes.quality.grade = ["A", "B"]')" \
+    "$(graded_scan_json | jq -c '.axes.quality.grade = null')" \
+    "$(graded_scan_json | jq -c '.axes.quality.grade = 1')" \
+    "$(graded_scan_json | jq -c '.axes.quality.grade = "a"')"; do
+    : > "$GITHUB_ENV"; : > "$GITHUB_OUTPUT"
+    export FAKE_DETECTOR_JSON="$json" FAKE_DETECTOR_EXIT=0
+    run bash "$BATS_TEST_DIRNAME/../../scripts/scan.sh"
+    [ "$status" -eq 0 ]
+    grep -qx 'SCAN_EXIT_CODE=3' "$GITHUB_ENV"
+    grep -qx 'result-valid=false' "$GITHUB_OUTPUT"
+    ! grep -q '^scan-json-path=' "$GITHUB_OUTPUT"
+  done
+}
+
+@test "scan.sh: plausible JSON never masks exit 42" {
+  export FAKE_DETECTOR_JSON="$(graded_scan_json)"
+  export FAKE_DETECTOR_EXIT=42
+  run bash "$BATS_TEST_DIRNAME/../../scripts/scan.sh"
+  [ "$status" -eq 0 ]
+  grep -q '^SCAN_EXIT_CODE=42$' "$GITHUB_ENV"
+  ! grep -q '^scan-json-path=' "$GITHUB_OUTPUT"
+}
+
+@test "scan.sh: a second invocation clears stale JSON and outputs no invented success" {
+  export FAKE_DETECTOR_JSON="$(graded_scan_json)"
+  bash "$BATS_TEST_DIRNAME/../../scripts/scan.sh"
+  : > "$GITHUB_OUTPUT"
+  : > "$GITHUB_ENV"
+  export FAKE_DETECTOR_JSON=''
+  export FAKE_DETECTOR_EXIT=127
+  run bash "$BATS_TEST_DIRNAME/../../scripts/scan.sh"
+  [ "$status" -eq 0 ]
+  grep -q '^SCAN_EXIT_CODE=127$' "$GITHUB_ENV"
+  ! grep -q '^grade=' "$GITHUB_OUTPUT"
 }

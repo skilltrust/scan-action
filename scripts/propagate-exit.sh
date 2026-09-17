@@ -11,8 +11,9 @@ set -euo pipefail
 # replaced. Precedent: `run-tests.sh` is bash-only too. Do not add a `.ps1`.
 #
 # Required env:
-#   SCAN_EXIT_CODE                 deferred scanner exit code (unset = 0)
+#   SCAN_EXIT_CODE                   deferred scanner exit code (required)
 # Optional env:
+#   INPUT_REPORT_ONLY                "true" | "false" (default "false")
 #   INPUT_WARN_ON_BELOW_THRESHOLD    "true" | "false" (default "true", mirroring action.yml)
 #   INPUT_GRADE                      scan step `grade` output, for the annotation
 #   INPUT_FINDINGS_COUNT             scan step `findings-count` output, ditto
@@ -36,7 +37,25 @@ set -euo pipefail
 # passing scan. Anything else is a code this version does not know about and
 # is re-raised untouched rather than guessed at.
 
-CODE="${SCAN_EXIT_CODE:-0}"
+if [ -z "${SCAN_EXIT_CODE+x}" ] || [ -z "$SCAN_EXIT_CODE" ]; then
+  echo "::error title=SkillTrust::scan did not publish a deferred exit code"
+  exit 3
+fi
+
+CODE="$SCAN_EXIT_CODE"
+case "$CODE" in
+  0|1|2|3) ;;
+  *[!0-9]*|'') echo "::error title=SkillTrust::invalid deferred exit code"; exit 3 ;;
+  *) exit "$CODE" ;;
+esac
+
+REPORT_ONLY="${INPUT_REPORT_ONLY:-false}"
+for input in "$REPORT_ONLY" "${INPUT_WARN_ON_BELOW_THRESHOLD:-true}" "${INPUT_FAIL_ON_NO_AGENT_SURFACE:-false}"; do
+  if [ "$input" != "true" ] && [ "$input" != "false" ]; then
+    echo "::error title=SkillTrust::boolean inputs must be the string 'true' or 'false'"
+    exit 3
+  fi
+done
 
 # A scan that read no agent surface produced no grade. The exit code is the
 # machine-readable claim, and with no grade asserted there is nothing to
@@ -56,6 +75,11 @@ if [ "$CODE" = "0" ] && [ "${INPUT_NO_AGENT_SURFACE:-false}" = "true" ]; then
   if [ "${INPUT_FAIL_ON_NO_AGENT_SURFACE:-false}" = "true" ]; then
     exit 2
   fi
+  exit 0
+fi
+
+if [ "$REPORT_ONLY" = "true" ] && { [ "$CODE" = "1" ] || [ "$CODE" = "2" ]; }; then
+  echo "::warning title=SkillTrust::findings retained in the scan JSON; report-only is on, so findings do not fail the build"
   exit 0
 fi
 

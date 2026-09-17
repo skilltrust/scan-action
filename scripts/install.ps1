@@ -25,13 +25,26 @@ Invoke-WebRequest -Uri "$base/$asset"        -OutFile (Join-Path $dest $asset)  
 Invoke-WebRequest -Uri "$base/checksums.txt" -OutFile (Join-Path $dest "checksums.txt") -UseBasicParsing
 
 # Verify sha256
-$expected = (Get-Content (Join-Path $dest "checksums.txt") |
-             Where-Object { $_ -match [regex]::Escape($asset) }) -split '\s+' | Select-Object -First 1
-if (-not $expected) { throw "install.ps1: $asset not found in checksums.txt" }
+$checksumPattern = '^[0-9A-Fa-f]{64}\s+\*?' + [regex]::Escape($asset) + '\s*$'
+$matchingChecksums = @(Get-Content (Join-Path $dest "checksums.txt") |
+                       Where-Object { $_ -match $checksumPattern })
+if ($matchingChecksums.Count -ne 1) { throw "install.ps1: $asset must appear exactly once in checksums.txt" }
+$expected = ($matchingChecksums[0] -split '\s+')[0]
 $actual = (Get-FileHash -Algorithm SHA256 (Join-Path $dest $asset)).Hash.ToLower()
 if ($expected.ToLower() -ne $actual) { throw "install.ps1: checksum mismatch for $asset" }
 
 Expand-Archive -Path (Join-Path $dest $asset) -DestinationPath $dest -Force
+
+$binary = Join-Path $dest "skill-detector.exe"
+if (!(Test-Path -LiteralPath $binary -PathType Leaf)) {
+  throw "install.ps1: archive does not contain skill-detector.exe"
+}
+$installedVersionOutput = & $binary version 2>$null
+$installedVersionExit = $LASTEXITCODE
+$installedVersion = ($installedVersionOutput | Out-String).Trim()
+if ($installedVersionExit -ne 0 -or $installedVersion -notmatch "version $([regex]::Escape($versionNoPrefix)) ") {
+  throw "install.ps1: installed detector version does not match $version"
+}
 
 # Append the extraction dir to PATH for subsequent steps.
 if ($env:GITHUB_PATH) { Add-Content -Path $env:GITHUB_PATH -Value $dest }

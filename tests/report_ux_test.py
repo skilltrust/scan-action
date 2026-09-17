@@ -1,0 +1,204 @@
+"""Renderer contract tests, run by Bats; no network or third-party packages."""
+import copy
+import importlib.util
+import itertools
+from pathlib import Path
+from types import SimpleNamespace
+import unittest
+
+ROOT = Path(__file__).resolve().parents[1]
+spec = importlib.util.spec_from_file_location("renderer", ROOT / "scripts/render.py")
+renderer = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(renderer)
+
+
+def finding(line, description, severity="HIGH", **fields):
+    values = dict(rule_id="SD-004", file_path="AGENTS.md", line=line,
+                  description=description, severity=severity,
+                  effective_severity=severity, diagnosis=description,
+                  remediation="Review and remove if unnecessary.")
+    values.update(fields)
+    return values
+
+
+class ReportUX(unittest.TestCase):
+    def setUp(self):
+        self.args = SimpleNamespace(delta="true", event="pull_request", scope=".",
+                                    exit_code="2", report_only="false", warn_below="true",
+                                    fail_no_surface="false")
+        self.old = finding(40, "existing critical", "CRITICAL")
+        self.new = finding(9, "new credential access", "CRITICAL", remediation="Remove credential access.")
+        self.scan = dict(findings=[self.old, finding(17, "shifted finding"), self.new],
+                         axes={"security": {"grade": "F"}}, files_scanned=4)
+        self.delta = dict(new_findings=[self.new], resolved_findings=[
+            finding(3, "base-only one"), finding(5, "base-only two"),
+            finding(8, "base-only three"), finding(12, "base-only four")], per_axis={})
+
+    def render(self):
+        return renderer.render(self.scan, self.delta, {"SD-004"}, "pr_comment", self.args)
+
+    def test_asymmetric_buckets_and_priority(self):
+        text = self.render()
+        self.assertIn("## SkillTrust — 3 current issues", text)
+        self.assertIn("**Current: 1 new in this PR · 2 already on base**  \n**Fixed by this PR: 4**", text)
+        self.assertLess(text.index("SkillTrust check will fail"), text.index("1 new in this PR"))
+        self.assertLess(text.index("new credential access"), text.index("existing critical"))
+        self.assertLess(text.index("Fixed by this PR (4)"), text.index("Grades for"))
+        self.assertLess(text.index("Grades for"), text.index("| Scope |"))
+        self.assertIn("<summary>Already on base (2 · includes 1 CRITICAL, 1 HIGH)</summary>", text)
+        self.assertIn("not previous runs", text)
+        self.assertIn("(base location)", text)
+        self.assertNotIn("Resolved", text)
+
+    def test_identity_uses_description_line_path_rule_not_severity_or_diagnosis(self):
+        other_description = finding(9, "different description")
+        other_line = finding(10, "new credential access")
+        other_path = dict(self.new, file_path="CLAUDE.md")
+        other_rule = dict(self.new, rule_id="SD-007")
+        self.scan["findings"] = [other_description, other_line, other_path, other_rule,
+                                 dict(self.new, severity="LOW", diagnosis="different diagnosis")]
+        new, existing = renderer.partition(self.scan["findings"], self.delta)
+        self.assertEqual([f["severity"] for f in new], ["LOW"])
+        self.assertEqual(existing, [other_description, other_line, other_path, other_rule])
+
+    def test_duplicate_occurrences_are_subtracted_one_for_one(self):
+        self.scan["findings"] = [self.new, self.new, self.new, self.old]
+        self.assertIn("1 new in this PR · 3 already on base", self.render())
+
+    def test_off_unavailable_and_non_pr_never_claim_delta_counts(self):
+        for mode, event, delta, reason in [
+            ("false", "pull_request", self.delta, "Comparison off"),
+            ("true", "pull_request", None, "Comparison unavailable"),
+            ("true", "pull_request", {}, "Comparison unavailable"),
+            ("true", "pull_request", dict(new_findings=[self.old, self.old], resolved_findings=[]), "Comparison unavailable"),
+            ("true", "schedule", self.delta, "Comparison unavailable"),
+        ]:
+            with self.subTest(mode=mode, event=event, delta=delta):
+                self.args.delta, self.args.event, self.delta = mode, event, delta
+                text = self.render()
+                self.assertIn("### Current findings (3)", text)
+                self.assertIn(reason, text)
+                self.assertNotIn("### New in this PR", text)
+                self.assertNotIn("### Fixed by this PR", text)
+                if event == "schedule":
+                    self.assertNotIn("PR is", text)
+
+    def test_malformed_or_inconsistent_fixed_findings_make_comparison_unavailable(self):
+        for fixed in ([{}], [copy.deepcopy(self.old)]):
+            with self.subTest(fixed=fixed):
+                self.delta = dict(new_findings=[], resolved_findings=fixed, per_axis={})
+                text = self.render()
+                self.assertIn("Comparison unavailable", text)
+                self.assertIn("### Current findings (3)", text)
+                self.assertNotIn("### New in this PR", text)
+                self.assertNotIn("### Fixed by this PR", text)
+
+    def test_policy_matrix_uses_full_head_not_new_findings(self):
+        self.delta["new_findings"] = []
+        for code, report_only, warn_below in itertools.product("012", (True, False), (True, False)):
+            with self.subTest(code=code, report_only=report_only, warn_below=warn_below):
+                self.args.exit_code = code
+                self.args.report_only = str(report_only).lower()
+                self.args.warn_below = str(warn_below).lower()
+                self.scan["findings"] = [] if code == "0" else [self.old]
+                blocked = not report_only and (code == "2" or (code == "1" and not warn_below))
+                text = self.render()
+                self.assertIn("SkillTrust check will fail" if blocked else "SkillTrust check passes", text)
+                if report_only:
+                    self.assertIn("passes — report-only mode", text)
+                if code == "0":
+                    self.assertIn("Clean — no findings", text)
+
+    def test_no_surface_policy_precedes_report_only(self):
+        self.scan = dict(no_agent_surface=True, findings=[])
+        self.args.exit_code = "0"
+        self.delta = None
+        for report_only, fail in itertools.product((True, False), repeat=2):
+            self.args.report_only = str(report_only).lower()
+            self.args.fail_no_surface = str(fail).lower()
+            text = self.render()
+            self.assertIn("SkillTrust check will fail" if fail else "SkillTrust check passes", text)
+            self.assertIn("Nothing was checked", text)
+            self.assertNotIn("Clean", text)
+            self.assertNotIn("| Security |", text)
+
+    def test_no_run_history_and_null_empty_delta(self):
+        # A finding introduced and removed inside this PR is in neither
+        # snapshot: no record of it may appear, including after a rerender.
+        self.render()
+        self.scan["findings"] = []
+        self.args.exit_code = "0"
+        self.delta = dict(new_findings=None, resolved_findings=None, per_axis={})
+        text = self.render()
+        self.assertIn("**Current: 0 new in this PR · 0 already on base**  \n**Fixed by this PR: 0**", text)
+        self.assertNotIn("new credential access", text)
+
+    def test_singular_title_and_fixed_count_are_separate(self):
+        self.scan["findings"] = [self.new]
+        text = self.render()
+        self.assertIn("## SkillTrust — 1 current issue\n", text)
+        self.assertIn("**Fixed by this PR: 4**", text)
+        self.assertNotIn("5 current", text)
+
+    def test_unknown_policy_never_claims_pass_or_merge_status(self):
+        for event, code, no_surface in itertools.product(("pull_request", "schedule"), ("", "3", "42"), (False, True)):
+            self.args.event, self.args.exit_code = event, code
+            self.args.report_only = "true"
+            self.scan["no_agent_surface"] = no_surface
+            text = self.render()
+            self.assertIn("SkillTrust check status unavailable", text)
+            self.assertNotIn("SkillTrust check passes", text)
+            self.assertNotIn("PR is", text)
+            if event == "schedule":
+                self.assertNotIn("blocks merging", text)
+
+    def test_invalid_boolean_policy_input_never_claims_pass(self):
+        self.scan = dict(findings=[], axes={"security": {"grade": "A"}})
+        self.args.exit_code = "0"
+        self.delta = None
+        for field in ("report_only", "warn_below", "fail_no_surface"):
+            with self.subTest(field=field):
+                setattr(self.args, field, "TRUE")
+                text = self.render()
+                self.assertIn("SkillTrust check will fail — invalid boolean policy input", text)
+                self.assertNotIn("SkillTrust check passes", text)
+                setattr(self.args, field, "false" if field != "warn_below" else "true")
+
+    def test_base_only_critical_visible_in_summary_even_when_detail_budget_exhausted(self):
+        new = [finding(i, "new low", "LOW") for i in range(10)]
+        self.scan["findings"] = new + [dict(self.old, severity="LOW", effective_severity="CRITICAL"),
+                                      finding(99, "base high", "HIGH"), finding(100, "base low", "LOW")]
+        self.delta["new_findings"] = new
+        text = self.render()
+        self.assertIn("Already on base (3 · includes 1 CRITICAL, 1 HIGH)", text)
+        self.assertIn("Showing 0 of 3 findings", text)
+        self.assertEqual(text.count("  - Explanation:"), 10)
+        self.assertNotIn("existing critical", text)
+        self.assertNotIn("caused", text)
+        self.scan["findings"][-3]["effective_severity"] = "INFO"
+        self.scan["findings"][-2]["severity"] = "MEDIUM"
+        self.scan["findings"][-2]["effective_severity"] = "MEDIUM"
+        self.assertIn("<summary>Already on base (3)</summary>", self.render())
+
+    def test_hostile_data_in_all_buckets_is_inert_and_total_head_cap_is_ten(self):
+        hostile = '</details><script>alert(1)</script> ![x](https://evil.invalid) @everyone\n::error::boom'
+        new = [finding(i, hostile, remediation=hostile) for i in range(7)]
+        old = [finding(i + 20, hostile) for i in range(8)]
+        fixed = [finding(i + 40, hostile) for i in range(12)]
+        self.scan["findings"] = old + new
+        self.delta = dict(new_findings=copy.deepcopy(new), resolved_findings=fixed, per_axis={})
+        before = copy.deepcopy(self.scan)
+        text = self.render()
+        self.assertEqual(text.count("  - Explanation:"), 10)
+        self.assertEqual(text.count("  - Previous finding:"), 10)
+        self.assertIn("Showing 3 of 8 findings", text)
+        self.assertIn("Showing 10 of 12 fixed findings", text)
+        self.assertNotIn("<script>", text)
+        self.assertNotIn("https://evil", text)
+        self.assertNotIn("@everyone", text)
+        self.assertEqual(text.count("</details>"), 2)
+        self.assertEqual(before, self.scan)
+
+
+if __name__ == "__main__":
+    unittest.main()

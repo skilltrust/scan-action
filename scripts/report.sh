@@ -5,37 +5,81 @@ set -euo pipefail
 #   RUNNER_TEMP                  scratch dir; $RUNNER_TEMP/comment.md must exist
 #   INPUT_GITHUB_REPOSITORY      "owner/repo"
 #   INPUT_PULL_NUMBER            PR number
-# Optional:
-#   INPUT_IS_FORK_PR             "true" → skip API, print to log
-#   GH_TOKEN / GITHUB_TOKEN      consumed by gh CLI
+#   INPUT_HEAD_REPOSITORY        PR head repository full_name
+#   INPUT_BASE_REPOSITORY        PR base repository full_name
+# Optional: GH_TOKEN consumed by gh CLI for same-repository PRs only.
 
 COMMENT_FILE="$RUNNER_TEMP/comment.md"
 REPO="$INPUT_GITHUB_REPOSITORY"
 PR="$INPUT_PULL_NUMBER"
 MARKER="<!-- skilltrust:action:v1 -->"
+APP_MARKER="<!-- skilltrust:bot:v1 -->"
+COMMENTS="$RUNNER_TEMP/skilltrust-comments.json"
 
-if [ "${INPUT_IS_FORK_PR:-false}" = "true" ]; then
-  echo "report.sh: fork PR detected; printing comment to log instead of posting"
-  echo "::group::SkillTrust comment (would-be)"
-  cat "$COMMENT_FILE"
-  echo "::endgroup::"
-  echo "::warning title=SkillTrust::Trust Score commentary printed to job log (fork PR cannot post comments)"
+warn_delivery() {
+  echo "::warning title=SkillTrust comment unavailable::$1; Job Summary and scan policy are unchanged"
+}
+
+if [ ! -f "$COMMENT_FILE" ]; then
+  warn_delivery "rendered comment is unavailable"
+  exit 0
+fi
+if ! [[ "$REPO" =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ ]] || ! [[ "$PR" =~ ^[0-9]+$ ]]; then
+  warn_delivery "pull request coordinates are invalid"
   exit 0
 fi
 
-# The Action yields to the App. The two sticky markers differ by design — the
-# Action's marker is a wire contract and cannot change — so a
-# repository running both would otherwise carry two grade comments in every
-# pull request. The App is the authoritative one: it scans on our servers, has
-# history and can triage.
-APP_MARKER="<!-- skilltrust:bot:v1 -->"
-APP_COMMENT_ID="$(gh api "repos/$REPO/issues/$PR/comments" \
-  --jq '.[] | select(.body | startswith("'"$APP_MARKER"'")) | .id' | head -n 1 || true)"
+if [ -z "${INPUT_HEAD_REPOSITORY:-}" ] || [ -z "${INPUT_BASE_REPOSITORY:-}" ]; then
+  warn_delivery "pull request repository identity is unavailable"
+  exit 0
+fi
+
+if [ "$INPUT_HEAD_REPOSITORY" != "$INPUT_BASE_REPOSITORY" ]; then
+  echo "report.sh: fork PR detected; printing comment to log instead of posting"
+  echo "::group::SkillTrust comment (would-be)"
+  sed 's/^/| /' "$COMMENT_FILE"
+  echo "::endgroup::"
+  warn_delivery "fork PRs receive App delivery only; Action report printed inertly above"
+  exit 0
+fi
+
+if ! command -v gh >/dev/null 2>&1; then
+  warn_delivery "GitHub CLI is unavailable"
+  exit 0
+fi
+if [ -z "${GH_TOKEN:-}" ]; then
+  warn_delivery "no writable GitHub token was provided"
+  exit 0
+fi
+
+# One paginated lookup establishes both App stand-off and sticky update state.
+# A failed or malformed lookup can never fall through to POST: that would risk
+# duplicates. API diagnostics are intentionally not replayed into the log.
+rm -f "$COMMENTS"
+if ! gh api --paginate --slurp "repos/$REPO/issues/$PR/comments?per_page=100" > "$COMMENTS" 2>/dev/null; then
+  warn_delivery "GitHub comment lookup failed"
+  exit 0
+fi
+if ! IDS="$(jq -er --arg app "$APP_MARKER" --arg ours "$MARKER" '
+  def valid_id: type == "number" and . >= 1 and . <= 9007199254740991 and floor == .;
+  if type == "array" and
+     all(.[]; type == "array" and
+       all(.[]; type == "object" and (.body | type == "string") and (.id | valid_id)))
+  then
+    [
+      ([.[][] | select(.body | startswith($app))][0].id // ""),
+      ([.[][] | select(.body | startswith($ours))][0].id // "")
+    ] | map(tostring) | join("|")
+  else error("invalid paginated comments")
+  end
+' "$COMMENTS" 2>/dev/null)"; then
+  warn_delivery "GitHub comment lookup returned an invalid response"
+  exit 0
+fi
+IFS='|' read -r APP_COMMENT_ID OURS <<< "$IDS"
 
 if [ -n "$APP_COMMENT_ID" ]; then
   echo "report.sh: App comment present ($APP_COMMENT_ID); yielding"
-  OURS="$(gh api "repos/$REPO/issues/$PR/comments" \
-    --jq '.[] | select(.body | startswith("'"$MARKER"'")) | .id' | head -n 1 || true)"
   if [ -n "$OURS" ]; then
     # Leaving our last grade in place would read as a second, disagreeing bot.
     # Replacing it is the only outcome that is neither a duplicate nor a stale
@@ -44,25 +88,30 @@ if [ -n "$APP_COMMENT_ID" ]; then
       echo "$MARKER"
       echo "_Superseded by the SkillTrust GitHub App, which is commenting on this pull request. The Action is still running your checks; it just stopped duplicating the report._"
     } > "$RUNNER_TEMP/comment.md.superseded"
-    gh api -X PATCH "repos/$REPO/issues/comments/$OURS" \
-      -F body=@"$RUNNER_TEMP/comment.md.superseded" > /dev/null
+    if ! gh api -X PATCH "repos/$REPO/issues/comments/$OURS" \
+      -F body=@"$RUNNER_TEMP/comment.md.superseded" > /dev/null 2>&1; then
+      warn_delivery "GitHub comment update failed while yielding to the App"
+      exit 0
+    fi
     echo "report.sh: replaced our comment $OURS with a superseded note"
   fi
   exit 0
 fi
 
-# Find existing marker comment.
-EXISTING_ID="$(gh api "repos/$REPO/issues/$PR/comments" \
-  --jq '.[] | select(.body | startswith("'"$MARKER"'")) | .id' | head -n 1 || true)"
-
-if [ -n "$EXISTING_ID" ]; then
-  echo "report.sh: PATCH existing comment $EXISTING_ID"
-  gh api -X PATCH "repos/$REPO/issues/comments/$EXISTING_ID" \
-    -F body=@"$COMMENT_FILE" > /dev/null
+if [ -n "$OURS" ]; then
+  echo "report.sh: PATCH existing comment $OURS"
+  if ! gh api -X PATCH "repos/$REPO/issues/comments/$OURS" \
+    -F body=@"$COMMENT_FILE" > /dev/null 2>&1; then
+    warn_delivery "GitHub comment update failed"
+    exit 0
+  fi
 else
   echo "report.sh: POST new comment"
-  gh api "repos/$REPO/issues/$PR/comments" \
-    -F body=@"$COMMENT_FILE" > /dev/null
+  if ! gh api "repos/$REPO/issues/$PR/comments" \
+    -F body=@"$COMMENT_FILE" > /dev/null 2>&1; then
+    warn_delivery "GitHub comment creation failed"
+    exit 0
+  fi
 fi
 
 echo "report.sh: done"

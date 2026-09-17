@@ -40,6 +40,194 @@ jobs:
       - run: pwsh --version
       - name: Execute delta.ps1 against fake binaries
         run: ./tests/pwsh/exec-delta-ps1.sh
+      - name: Execute reporting PowerShell against fake GitHub API
+        run: ./tests/pwsh/exec-reporting-ps1.sh
+      - name: Execute installer PowerShell against exact local release fixtures
+        run: ./tests/pwsh/exec-install-ps1.sh
+      - name: Execute telemetry PowerShell against local capture
+        run: ./tests/pwsh/exec-telemetry-ps1.sh
+
+  m3-local-contracts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Linux composite-equivalent policy and output matrix
+        run: ./tests/e2e/local-composite-equivalent.sh
+      - name: Independently copy and validate README candidate
+        run: ./tests/e2e/readme-candidate.sh
+
+  # Synthetic policy matrix still enters through the composite (`uses: ./`).
+  # It substitutes only installation, allowing deterministic detector exits
+  # that the real binary cannot naturally produce (notably unknown exit 42).
+  # The real installer has separate exact-release fixtures and the supported
+  # hosted matrix below exercises it without substitution.
+  m3-composite-policy:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { case: clean, exit: 0, report: 'false', warn: 'true', no_surface: 'false', fail_empty: 'false', expected: success, valid: 'true' }
+          - { case: below-default, exit: 1, report: 'false', warn: 'true', no_surface: 'false', fail_empty: 'false', expected: success, valid: 'true' }
+          - { case: below-legacy, exit: 1, report: 'false', warn: 'false', no_surface: 'false', fail_empty: 'false', expected: failure, valid: 'true' }
+          - { case: below-report, exit: 1, report: 'true', warn: 'false', no_surface: 'false', fail_empty: 'false', expected: success, valid: 'true' }
+          - { case: critical, exit: 2, report: 'false', warn: 'true', no_surface: 'false', fail_empty: 'false', expected: failure, valid: 'true' }
+          - { case: critical-report, exit: 2, report: 'true', warn: 'true', no_surface: 'false', fail_empty: 'false', expected: success, valid: 'true' }
+          - { case: axis-equal, exit: axis, axis: 'security=D', report: 'false', warn: 'true', no_surface: 'false', fail_empty: 'false', expected: success, valid: 'true' }
+          - { case: axis-strict-worse, exit: axis, axis: 'security=C', report: 'false', warn: 'true', no_surface: 'false', fail_empty: 'false', expected: failure, valid: 'true' }
+          - { case: empty-warn, exit: 0, report: 'false', warn: 'true', no_surface: 'true', fail_empty: 'false', expected: success, valid: 'true' }
+          - { case: empty-gate, exit: 0, report: 'true', warn: 'true', no_surface: 'true', fail_empty: 'true', expected: failure, valid: 'true' }
+          - { case: tool-error, exit: 3, report: 'true', warn: 'true', no_surface: 'false', fail_empty: 'false', expected: failure, valid: 'false' }
+          - { case: unknown, exit: 42, report: 'true', warn: 'true', no_surface: 'false', fail_empty: 'false', expected: failure, valid: 'false' }
+    steps:
+      - uses: actions/checkout@v7
+      - name: Substitute deterministic detector installation
+        shell: bash
+        run: |
+          cat > scripts/install.sh <<'INSTALL'
+          #!/usr/bin/env bash
+          set -euo pipefail
+          dest="$RUNNER_TEMP/skill-detector-install"
+          mkdir -p "$dest"
+          cp "$GITHUB_ACTION_PATH/tests/e2e/m3-fake-detector.sh" "$dest/skill-detector"
+          chmod +x "$dest/skill-detector"
+          echo "$dest" >> "$GITHUB_PATH"
+          echo "SCAN_ACTION_DETECTOR_DIR=$dest" >> "$GITHUB_ENV"
+          INSTALL
+          chmod +x scripts/install.sh
+      - id: action
+        continue-on-error: true
+        uses: ./
+        env:
+          M3_FAKE_EXIT: ${{ matrix.exit }}
+          M3_FAKE_NO_SURFACE: ${{ matrix.no_surface }}
+        with:
+          path: tests/fixtures/difficult path ñ
+          report-only: ${{ matrix.report }}
+          fail-on-axis: ${{ matrix.axis }}
+          warn-on-below-threshold: ${{ matrix.warn }}
+          fail-on-no-agent-surface: ${{ matrix.fail_empty }}
+          comment: 'false'
+          delta: 'false'
+          telemetry: 'false'
+      - name: Consume all outputs and assert policy
+        if: always()
+        shell: bash
+        env:
+          OUTCOME: ${{ steps.action.outcome }}
+          EXPECTED: ${{ matrix.expected }}
+          VALID: ${{ matrix.valid }}
+          GRADE: ${{ steps.action.outputs.grade }}
+          JSON_PATH: ${{ steps.action.outputs.scan-json-path }}
+          COUNT: ${{ steps.action.outputs.findings-count }}
+          NO_SURFACE: ${{ steps.action.outputs.no-agent-surface }}
+        run: |
+          set -euo pipefail
+          [ "$OUTCOME" = "$EXPECTED" ]
+          if [ "$VALID" = true ]; then
+            jq -e '.complete_marker == "kept"' "$JSON_PATH"
+            [ -n "$COUNT" ]
+            [ -n "$NO_SURFACE" ]
+            if [ "$NO_SURFACE" = true ]; then [ -z "$GRADE" ]; else [[ "$GRADE" =~ ^[ABCDF]$ ]]; fi
+          else
+            [ -z "$GRADE$JSON_PATH$COUNT$NO_SURFACE" ]
+          fi
+
+  # Actual composite coverage. Every invocation below is `uses: ./`; script
+  # unit tests are not accepted as a substitute for this matrix. Telemetry and
+  # comments are disabled so synthetic checks have no network side effects.
+  m3-composite-supported:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+      - id: clean
+        uses: ./
+        with:
+          path: tests/fixtures/difficult path ñ
+          comment: 'false'
+          telemetry: 'false'
+      - name: Consume clean outputs and complete JSON
+        shell: bash
+        env:
+          GRADE: ${{ steps.clean.outputs.grade }}
+          JSON_PATH: ${{ steps.clean.outputs.scan-json-path }}
+          COUNT: ${{ steps.clean.outputs.findings-count }}
+          NO_SURFACE: ${{ steps.clean.outputs.no-agent-surface }}
+        run: |
+          set -euo pipefail
+          [[ "$GRADE" =~ ^[ABCDF]$ ]]
+          [ "$COUNT" -eq 0 ]
+          [ "$NO_SURFACE" = false ]
+          jq -e '.findings | length == 0' "$JSON_PATH"
+      - id: findings
+        uses: ./
+        with:
+          path: tests/fixtures/critical-repo
+          report-only: 'true'
+          comment: 'false'
+          telemetry: 'false'
+      - name: Consume findings outputs and complete JSON
+        shell: bash
+        env:
+          GRADE: ${{ steps.findings.outputs.grade }}
+          JSON_PATH: ${{ steps.findings.outputs.scan-json-path }}
+          COUNT: ${{ steps.findings.outputs.findings-count }}
+          NO_SURFACE: ${{ steps.findings.outputs.no-agent-surface }}
+        run: |
+          set -euo pipefail
+          [[ "$GRADE" =~ ^[ABCDF]$ ]]
+          [ "$COUNT" -gt 0 ]
+          [ "$NO_SURFACE" = false ]
+          [ "$(jq '.findings | length' "$JSON_PATH")" -eq "$COUNT" ]
+      - name: Preserve complete expected-block JSON as an artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: m3-report-only-${{ matrix.os }}
+          path: ${{ steps.findings.outputs.scan-json-path }}
+      - id: empty
+        uses: ./
+        with:
+          path: tests/fixtures/empty-repo
+          comment: 'false'
+          telemetry: 'false'
+      - name: Consume no-surface outputs and complete JSON
+        shell: bash
+        env:
+          GRADE: ${{ steps.empty.outputs.grade }}
+          JSON_PATH: ${{ steps.empty.outputs.scan-json-path }}
+          COUNT: ${{ steps.empty.outputs.findings-count }}
+          NO_SURFACE: ${{ steps.empty.outputs.no-agent-surface }}
+        run: |
+          set -euo pipefail
+          [ -z "$GRADE" ]
+          [ "$COUNT" -eq 0 ]
+          [ "$NO_SURFACE" = true ]
+          jq -e '.no_agent_surface == true and (.findings | length == 0)' "$JSON_PATH"
+      - id: error
+        continue-on-error: true
+        uses: ./
+        with:
+          path: tests/fixtures/does-not-exist
+          report-only: 'true'
+          comment: 'false'
+          telemetry: 'false'
+      - name: Operational failure is not report-only success
+        if: always()
+        shell: bash
+        env:
+          OUTCOME: ${{ steps.error.outcome }}
+          GRADE: ${{ steps.error.outputs.grade }}
+          JSON_PATH: ${{ steps.error.outputs.scan-json-path }}
+          COUNT: ${{ steps.error.outputs.findings-count }}
+          NO_SURFACE: ${{ steps.error.outputs.no-agent-surface }}
+        run: |
+          set -euo pipefail
+          [ "$OUTCOME" = failure ]
+          [ -z "$GRADE$JSON_PATH$COUNT$NO_SURFACE" ]
 
   # The four gate-default verification cases against the REAL engine. bats runs
   # against a fake detector that returns whatever exit code the test hands it,
@@ -83,6 +271,7 @@ jobs:
           # comment steps would otherwise run without `pull-requests: write` and
           # 403 — and would race the dedicated comment jobs for the marker.
           comment: 'false'
+          telemetry: 'false'
           # warn-on-below-threshold now defaults to true; pin it off so this job
           # stays as strict as it was — if clean-repo ever starts producing a
           # below-threshold finding, it should still red this job, not go green.
@@ -105,6 +294,7 @@ jobs:
           # Must be off, or this job fails on a comment 403 instead of on the
           # scan's exit code — a false pass that stops testing what it claims to.
           comment: 'false'
+          telemetry: 'false'
       - name: Assert action failed
         if: steps.action.outcome != 'failure'
         run: |
@@ -124,6 +314,7 @@ jobs:
           path: tests/fixtures/malicious-repo
           fail-on: high
           comment: 'true'
+          telemetry: 'false'
         continue-on-error: true
       - name: Assert sticky comment exists
         env:
@@ -159,6 +350,7 @@ jobs:
           fail-on: high
           delta: 'true'
           comment: 'true'
+          telemetry: 'false'
       - name: Assert marker comment posted
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -223,25 +415,26 @@ jobs:
             echo "Expected smoke-pr-delta to have left a marker comment, found none" >&2
             exit 1
           fi
-          # smoke-pr-delta scans malicious-repo, so the comment must currently
-          # say grade D. If it already said A, the flip this job asserts on
-          # would be vacuous.
-          if ! printf '%s' "$body" | grep -qF -- 'Trust Score **D**'; then
-            echo "Expected smoke-pr-delta's grade-D body; the D->A assertion would be vacuous" >&2
+          # smoke-pr-delta scans malicious-repo at fail-on high, so its report
+          # must carry a blocking threshold outcome. A clean body would make
+          # the rewrite assertion vacuous.
+          if ! printf '%s' "$body" | grep -qF -- 'SkillTrust check will fail — configured threshold reached'; then
+            echo "Expected smoke-pr-delta's blocking body; the malicious-to-clean assertion would be vacuous" >&2
             printf '%s\n' "$body" >&2
             exit 1
           fi
           echo "id=$id" >> "$GITHUB_OUTPUT"
 
       # Executes render-comment.ps1 and report.ps1 — the whole point of the job.
-      # clean-repo, so the comment must flip to grade A: a change only these two
-      # scripts could have made.
+      # clean-repo, so the comment must flip to a clean outcome: a change only
+      # these two scripts could have made.
       - name: Comment from Windows (executes render-comment.ps1 + report.ps1)
         uses: ./
         with:
           path: tests/fixtures/clean-repo
           comment: 'true'
           delta: 'false'
+          telemetry: 'false'
 
       - name: Assert the Windows comment steps actually rewrote the comment
         shell: bash
@@ -263,9 +456,9 @@ jobs:
           fi
           body=$(gh api "$api" --jq '[.[] | select(.body | startswith("<!-- skilltrust:action:v1 -->"))][0].body')
           # If the Windows render/report steps had silently skipped, the body
-          # would still be smoke-pr-delta's grade D. That is the point.
-          if ! printf '%s' "$body" | grep -qF -- 'Trust Score **A**'; then
-            echo "Comment body is not clean-repo's grade A; the Windows render/report steps did not run" >&2
+          # would still carry smoke-pr-delta's blocking outcome.
+          if ! printf '%s' "$body" | grep -qF -- 'Clean — no findings'; then
+            echo "Comment body is not clean-repo's clean outcome; the Windows render/report steps did not run" >&2
             printf '%s\n' "$body" >&2
             exit 1
           fi

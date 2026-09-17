@@ -40,10 +40,44 @@ echo "install.sh: downloading $BASE/$ASSET"
 curl -fsSL --retry 3 -o "$DEST/$ASSET"        "$BASE/$ASSET"
 curl -fsSL --retry 3 -o "$DEST/checksums.txt" "$BASE/checksums.txt"
 
-( cd "$DEST" && sha256sum --check --ignore-missing checksums.txt 2>/dev/null \
-                 || shasum -a 256 --check --ignore-missing checksums.txt )
+EXPECTED="$(awk -v asset="$ASSET" '
+  $2 == asset || $2 == "*" asset { hash = $1; matches++ }
+  END { if (matches == 1) print hash; else exit 1 }
+' "$DEST/checksums.txt")" || {
+  echo "install.sh: $ASSET must appear exactly once in checksums.txt" >&2
+  exit 1
+}
+if ! [[ "$EXPECTED" =~ ^[[:xdigit:]]{64}$ ]]; then
+  echo "install.sh: invalid checksum for $ASSET" >&2
+  exit 1
+fi
+if command -v sha256sum >/dev/null 2>&1; then
+  ACTUAL="$(sha256sum "$DEST/$ASSET" | awk '{print $1}')"
+else
+  ACTUAL="$(shasum -a 256 "$DEST/$ASSET" | awk '{print $1}')"
+fi
+EXPECTED_LOWER="$(printf '%s' "$EXPECTED" | tr '[:upper:]' '[:lower:]')"
+ACTUAL_LOWER="$(printf '%s' "$ACTUAL" | tr '[:upper:]' '[:lower:]')"
+if [ "$EXPECTED_LOWER" != "$ACTUAL_LOWER" ]; then
+  echo "install.sh: checksum mismatch for $ASSET" >&2
+  exit 1
+fi
 
 tar -xzf "$DEST/$ASSET" -C "$DEST"
+
+BINARY="$DEST/skill-detector"
+if [ ! -x "$BINARY" ]; then
+  echo "install.sh: archive does not contain executable skill-detector" >&2
+  exit 1
+fi
+INSTALLED_VERSION="$($BINARY version 2>/dev/null)" || {
+  echo "install.sh: installed detector did not report its version" >&2
+  exit 1
+}
+case "$INSTALLED_VERSION" in
+  *"version ${VERSION#v} "*) ;;
+  *) echo "install.sh: installed detector version does not match $VERSION" >&2; exit 1 ;;
+esac
 
 # Append the extraction dir to PATH for subsequent steps in this job.
 if [ -n "${GITHUB_PATH:-}" ]; then

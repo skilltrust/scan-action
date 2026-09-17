@@ -16,13 +16,19 @@ lives in a shell script rather than in a program.
 ### Delta mode
 
 `delta: true`. On pull-request triggers the Action also scans the base ref and
-runs the engine's `delta` sub-command, so the comment shows per-axis movement,
-a "Why downgraded" block and a resolved-findings block instead of a flat grade
-table.
+runs the engine's `delta` sub-command, so the report shows public-axis movement
+and new/existing/fixed groups instead of head-only current findings. “Fixed by
+this PR” means present on current base, absent from current head—not fixed
+since an earlier run. A finding added and removed within the PR is absent
+from both snapshots and is not reported as fixed. No run history is stored.
 
 It **doubles runtime**, because it means two full scans. Off by default. It
 also needs the base ref to be fetchable, which is why the documented workflow
 checks out with `fetch-depth: 0`.
+
+Comparison is presentation only. The whole head result still gates. A fetch,
+worktree, base scan/result, or delta failure is shown as **delta unavailable**,
+never as zero new findings, and does not alter the validated head result.
 
 ### Detector version
 
@@ -44,12 +50,10 @@ someone who never looked: a renamed or removed input or output needs a `v2`.
 
 ### Fork degradation
 
-A pull request from a fork gets a read-only `GITHUB_TOKEN`, so posting a
-comment would fail. Rather than failing the build, `report.{sh,ps1}` detects
-this from `INPUT_IS_FORK_PR`, prints the rendered comment into the job log
-inside a `::group::`, emits a `::warning::` annotation and exits 0. The
-maintainer sees the result in the job log; the pull request itself stays
-comment-free.
+A pull request is a fork when head and base repository identities differ.
+`action.yml` then withholds the token and `report.{sh,ps1}` makes no API call.
+It prefixes every rendered line before inert log output, warns, and leaves PR
+delivery to an installed App. Summary and scan policy remain available.
 
 ### Gate defaults
 
@@ -73,6 +77,13 @@ sticky comment both state that nothing was checked rather than showing a
 trust score. The build still passes by default, because a repository that
 genuinely has no agent configuration would otherwise be permanently red with
 no fix available. `fail-on-no-agent-surface: true` opts into gating on it.
+
+### Report-only
+
+`report-only: true` makes validated finding outcomes nonblocking. Engine exits
+`1` and `2` become Action success while their raw JSON remains available.
+Operational failures—including missing or invalid results—remain failures.
+The default is `false`; legacy gate defaults remain unchanged.
 
 ### `SCAN_EXIT_CODE`
 
@@ -109,8 +120,8 @@ for success would still pass if the final step were deleted.
 
 The single pull-request comment the Action maintains, identified by the marker
 `<!-- skilltrust:action:v1 -->` as the first line of the body. On each run
-`report.{sh,ps1}` searches the PR's comments for that marker and **patches**
-the one it finds, rather than posting a new one.
+`report.{sh,ps1}` paginates once, searches locally, and **patches** the one it
+finds. A failed lookup never falls through to POST.
 
 The marker string is a wire contract. Changing it orphans every comment
 already posted — the next run cannot find them, so it posts a second comment

@@ -114,7 +114,7 @@ Some behaviour here looks like an oversight and is not. Do not change any of
 the following on inference; ask the maintainer first and get a yes:
 
 - **The sticky-comment marker `<!-- skilltrust:action:v1 -->`**, and its position as the first line of the body.
-- **The input names** — `path`, `fail-on`, `fail-on-axis`, `strict-mcp`, `scan-all`, `comment`, `warn-on-below-threshold`, `fail-on-no-agent-surface`, `delta`, `telemetry`, `github-token`, `detector-version` — and **the output names** — `grade`, `scan-json-path`, `findings-count`, `no-agent-surface`.
+- **The input names** — `path`, `fail-on`, `fail-on-axis`, `strict-mcp`, `scan-all`, `comment`, `warn-on-below-threshold`, `fail-on-no-agent-surface`, `report-only`, `delta`, `telemetry`, `github-token`, `detector-version` — and **the output names** — `grade`, `scan-json-path`, `findings-count`, `no-agent-surface`.
 - **The gate defaults**: `fail-on: critical` and `warn-on-below-threshold: 'true'`. Only a CRITICAL finding fails a build nobody configured. The default is written in three places that must agree — `action.yml`, the `FAIL_ON` fallback in `scan.{sh,ps1}`, and the `INPUT_WARN_ON_BELOW_THRESHOLD` fallback in `propagate-exit.sh`. `action.yml` is the source of truth and `tests/bats/gate-defaults.bats` reads it and pins all three.
 - **The telemetry-never-fails rule**, and the payload's field set. Telemetry is on by default; it stays anonymous and it stays incapable of failing a build.
 - **The exit-code mapping.** Only engine exit `1` is ever downgraded, and only under `warn-on-below-threshold: true`. `2` is a real threshold breach; `3` means the scan never ran, and a scan that could not run is not a passing scan. An unrecognised code is re-raised untouched rather than guessed at.

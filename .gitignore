@@ -19,6 +19,8 @@ docs/*
 !docs/glossary.md
 !docs/product-context.md
 !docs/cross-repo.md
+!docs/STATUS.md
+!docs/release-readiness.md
 
 # Agent scratch: per-task briefs and reports
 .agent-scratch/
