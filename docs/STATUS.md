@@ -1,6 +1,73 @@
 # Status
 
-## ST-5 — Report UX candidate
+## Post-merge behavior fixes — 2026-09-17
+
+Based on the same current `origin/main` merge commit linked below. The prior
+documentation commit is preserved; both behavior findings are now fixed.
+
+- Both telemetry steps pass event repository visibility explicitly. Exact
+  `public` sends public, `private`/`internal` send private; absent, unknown or
+  differently cased values send no heartbeat. No new payload fields or raw data.
+- Reports use "Workflow checkout" on every trigger. They do not infer actual
+  checkout identity from PR event metadata. README still selects PR head
+  explicitly; synthetic merge and custom checkouts get the same honest label.
+- Regression-first: new visibility and checkout tests failed on old POSIX
+  behavior; the new wiring test failed; native PowerShell failed with
+  `telemetry value mismatch`. All pass after the fixes.
+- Verification: 122/122 Bats tests; native PowerShell 7.6.6 on Linux (all six
+  parse/execution harnesses); pinned real detector v0.10.0 installer, gate
+  defaults and m1-policy; local composite-equivalent and README contracts.
+  No live telemetry or GitHub writes. Native Windows/macOS and hosted acceptance
+  for these follow-up commits still require owner-authorized CI.
+
+Release remains NO-GO for the site `/docs/action` 404 and outstanding hosted
+acceptance. This repository does not deploy the site. See release-readiness.
+
+## Historical post-merge documentation review — before behavior fixes
+
+The following records the initial findings and checks, not unresolved runtime
+defects or the current local tool availability.
+
+Reviewed exact current `origin/main`, PR #22's
+[merge commit](https://github.com/skilltrust/scan-action/commit/2c847f0de7193ab818d2965ec3df5ad9f1cd4de4).
+GitHub reports this repository PUBLIC. Fresh read-only inspection confirmed
+[CI 35254445155](https://github.com/skilltrust/scan-action/actions/runs/35254445155)
+and [CodeQL 35254457527](https://github.com/skilltrust/scan-action/actions/runs/35254457527)
+success on that commit; PR-only comment/delta jobs were skipped on push.
+
+Documentation corrections: report-only precedence, Python renderer/runtime,
+validated-result step guards and internal output, pseudonymous telemetry,
+output retention on policy failure, GitHub report lifetimes, explicit PR-head
+checkout and candidate/released-version separation. No runtime logic changed.
+The README contract test now rejects a default synthetic-merge checkout.
+
+Local checks: 119/119 Bats tests passed, including the Python report UX suite.
+The local composite-equivalent and copied README contract harnesses passed.
+Native PowerShell is unavailable in this orb; hosted checks above are separate
+evidence, not a local rerun. No new hosted workflow or delivery was triggered.
+
+Remaining behavior findings (not fixed by this documentation-only review):
+
+- **Medium, pre-existing:** `telemetry.{sh,ps1}` derives `repo_visibility`
+  from `GITHUB_REPOSITORY_VISIBILITY`, which is not a GitHub default variable;
+  `action.yml` does not supply it. Absent that variable, a private repository
+  is labelled public. Both telemetry tests inject it explicitly, masking the
+  missing production wiring. Fix needs a separately approved behavior change.
+- **Medium:** `render.py` labels every `pull_request` checkout "Pull request
+  head", even when the caller selected GitHub's default synthetic merge ref
+  or another ref. The corrected quickstart selects head explicitly; custom
+  workflows remain subject to this presentation mismatch. The scan itself
+  uses the actual checkout, not the label.
+
+Release remains NO-GO: live `/docs/action` returned 404 while all 25 rule pages
+passed. `v1` still points to v1.10.0 without report-only. See
+`release-readiness.md` for owner acceptance and Marketplace operations.
+No push, PR write, release/tag move, Marketplace mutation or live telemetry.
+
+## Historical ST-5 candidate record — before merge
+
+The following is retained history, not current branch/release status or fresh
+verification by the post-merge reviewer.
 
 The complete relaunch candidate is pushed to draft PR #22 at
 `98ea7876bbb9d8b61e053b00bac6dfe324cf7aa2`. Fresh hosted

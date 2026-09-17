@@ -46,8 +46,9 @@ inputs:
       on it made every below-threshold finding as loud as a real breach.
       The findings still appear in the job log as a `::warning::` annotation,
       and on pull-request runs, in the sticky PR comment too. Set `false` to
-      fail on them. Exit 2 (a threshold breach) and exit 3 (tool error) are
-      never downgraded.
+      fail on them unless report-only is enabled. This input never downgrades
+      exit 2; report-only separately downgrades validated finding exits 1/2.
+      Exit 3 (tool error) always fails.
     required: false
     default: 'true'
   fail-on-no-agent-surface:
@@ -55,7 +56,7 @@ inputs:
     required: false
     default: 'false'
   report-only:
-    description: Report findings without failing the build; scan and result errors still fail
+    description: Report findings without failing the build; operational errors and fail-on-no-agent-surface still fail
     required: false
     default: 'false'
   delta:
@@ -63,7 +64,7 @@ inputs:
     required: false
     default: 'false'
   telemetry:
-    description: Send anonymous install heartbeat to skilltrust.app (no findings, no paths)
+    description: Send a pseudonymous heartbeat per validated scan to skilltrust.app (aggregate grade/count and stable repository hash; no finding details or paths)
     required: false
     default: 'true'
   github-token:
@@ -212,6 +213,7 @@ runs:
         INPUT_ACTION_VERSION:   1.11.0
         INPUT_DETECTOR_VERSION: ${{ inputs.detector-version }}
         INPUT_DELTA_ENABLED:    ${{ inputs.delta }}
+        INPUT_REPO_VISIBILITY:  ${{ github.event.repository.visibility }}
       run: ${{ github.action_path }}/scripts/telemetry.sh
 
     - name: Send telemetry (Windows)
@@ -224,6 +226,7 @@ runs:
         INPUT_ACTION_VERSION:   1.11.0
         INPUT_DETECTOR_VERSION: ${{ inputs.detector-version }}
         INPUT_DELTA_ENABLED:    ${{ inputs.delta }}
+        INPUT_REPO_VISIBILITY:  ${{ github.event.repository.visibility }}
       run: ${{ github.action_path }}/scripts/telemetry.ps1
 
     # bash on every OS (Git Bash on Windows), so deliberately not a .ps1 pair —

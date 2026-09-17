@@ -24,6 +24,8 @@ ruby -ryaml -e '
   raise "candidate must be report-only" unless action.dig("with", "report-only") == "true"
   raise "candidate must request delta" unless action.dig("with", "delta") == "true"
   raise "missing checkout history" unless steps.any? { |step| step["uses"] == "actions/checkout@v4" && step.dig("with", "fetch-depth") == 0 }
+  checkout = steps.find { |step| step["uses"] == "actions/checkout@v4" }
+  raise "candidate must scan PR head, not synthetic merge" unless checkout.dig("with", "ref") == "${{ github.event.pull_request.head.sha || github.sha }}"
 ' "$CANDIDATE"
 
 ruby -ryaml -e '

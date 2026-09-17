@@ -1,7 +1,12 @@
 # Changelog
 
-## [1.11.0] — 2026-09-17
+## [1.11.0] — Unreleased
 
+- Source telemetry visibility from event repository metadata on both OS paths.
+  Map internal repositories to private and skip telemetry when visibility is
+  unknown; retain the ten-field payload without raw data.
+- Label reports as Workflow checkout rather than inferring PR head from the
+  trigger. The documented quickstart explicitly checks out the PR head SHA.
 - Lead Summary and PR comments with the issue count, actual check policy and
   next step. Available PR delta separates new, already-on-base and fixed
   findings; no comparison means current findings only, never run history.

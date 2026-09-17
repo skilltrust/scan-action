@@ -9,7 +9,7 @@ a user's CI, and the only one of the three that contains no Go at all.
 |---|---|---|
 | `skill-detector` | The detection engine. The file walk, the rules, the grading, and the CLI. Everything a scan concludes is decided there. | Public. |
 | The hosted scanner, `skilltrust` | The web application at [skilltrust.app](https://skilltrust.app): the scan pages, the reports, the badge service and the GitHub App backend. Embeds the engine as a Go library. | Private. |
-| `scan-action`, this repository | Wraps a scan so a repository can gate its pull requests on the result. Shell only. | Public. |
+| `scan-action`, this repository | Wraps a scan so a repository can gate its pull requests on the result. Shell wrappers and Python reporting. | Public. |
 
 ## This repository depends on the engine's CLI, not its library
 
@@ -23,7 +23,7 @@ compiler can catch. Three parts of it are load-bearing:
 
 - **Flag names and semantics.** `scan.{sh,ps1}` builds `scan <path> --format json --fail-on <v>`, plus `--fail-on-axis`, `--strict-mcp` and `--scan-all`; `delta.{sh,ps1}` calls the `delta` sub-command with two JSON files. A renamed or removed flag, or one whose default moves, breaks this Action at runtime with no build failure anywhere.
 - **Exit codes.** The Action turns the engine's exit code into the job's pass or fail. The `0` / `1` / `2` / `3` contract is what `propagate-exit.sh` implements, so it is load-bearing outside the engine's own repository.
-- **The JSON output shape.** The scan, render and telemetry steps parse the result rather than embedding the engine's types. `.axes[].grade`, `.findings[]` with `severity`, `effective_severity`, `rule_id`, `file_path`, `line`, `diagnosis`, and `remediation`, plus `.warnings`, `.files_scanned`, `.no_agent_surface`, and `.version` are read by name. The delta JSON's `.per_axis` and `.resolved_findings` are presentation inputs.
+- **The JSON output shape.** The scan, render and telemetry steps parse the result rather than embedding the engine's types. `.axes[].grade`, `.findings[]` with `severity`, `effective_severity`, `rule_id`, `file_path`, `line`, `description`, `diagnosis`, and `remediation`, plus `.warnings`, `.files_scanned`, `.no_agent_surface`, and `.version` are read by name. The delta JSON's `.per_axis`, `.new_findings`, and `.resolved_findings` are presentation inputs; `.axis_explanations` is validated at the delta boundary.
 
 The upside of not compiling against the engine is that this repository builds
 and tests without it. The cost is that a breaking engine change shows up here

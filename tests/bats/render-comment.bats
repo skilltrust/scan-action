@@ -36,8 +36,22 @@ render() { run bash "$BATS_TEST_DIRNAME/../../scripts/render-comment.sh"; }
   grep -q 'Clean — no findings' "$GITHUB_STEP_SUMMARY"
   grep -q 'Files scanned | \*\*7\*\*' "$GITHUB_STEP_SUMMARY"
   grep -q 'Scope | agent config' "$GITHUB_STEP_SUMMARY"
-  grep -q 'Pull request head' "$GITHUB_STEP_SUMMARY"
+  grep -q '| Checkout | Workflow checkout |' "$GITHUB_STEP_SUMMARY"
   [ "$before" = "$(sha256sum "$INPUT_SCAN_JSON")" ]
+}
+
+@test "safe renderer: PR merge, explicit head, and custom ref never imply proven head identity" {
+  write_scan
+  for ref in refs/pull/7/merge refs/heads/topic refs/tags/custom; do
+    export GITHUB_REF="$ref"
+    : > "$GITHUB_STEP_SUMMARY"
+    render
+    [ "$status" -eq 0 ]
+    for report in "$RUNNER_TEMP/comment.md" "$GITHUB_STEP_SUMMARY"; do
+      grep -q '| Checkout | Workflow checkout |' "$report"
+      ! grep -q 'Pull request head' "$report"
+    done
+  done
 }
 
 @test "safe renderer: only three public axes are rendered; raw Quality output is untouched" {

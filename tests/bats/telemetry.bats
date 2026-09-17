@@ -38,7 +38,8 @@ EOF
 
   export GITHUB_SERVER_URL="https://github.com"
   export GITHUB_REPOSITORY="private-owner/private-repo"
-  export GITHUB_REPOSITORY_VISIBILITY="private"
+  export INPUT_REPO_VISIBILITY="private"
+  unset GITHUB_REPOSITORY_VISIBILITY
   export GITHUB_EVENT_NAME="pull_request"
   export RUNNER_OS="Linux"
   export RUNNER_ARCH="X64"
@@ -48,6 +49,33 @@ EOF
   export INPUT_DELTA_ENABLED="false"
 }
 teardown() { teardown_tmpdir; }
+
+@test "telemetry.sh: only trusted known visibility sends the ten-field payload" {
+  for visibility in public private internal; do
+    export INPUT_REPO_VISIBILITY="$visibility"
+    : > "$FAKE_CURL_LOG"
+    run bash "$BATS_TEST_DIRNAME/../../scripts/telemetry.sh"
+    [ "$status" -eq 0 ]
+    [ "$(wc -l < "$FAKE_CURL_LOG")" -eq 1 ]
+    expected=private
+    [ "$visibility" != public ] || expected=public
+    [ "$(jq -r .repo_visibility "$FAKE_CURL_BODY")" = "$expected" ]
+    [ "$(jq 'keys | length' "$FAKE_CURL_BODY")" -eq 10 ]
+  done
+  export GITHUB_REPOSITORY_VISIBILITY=public
+  for visibility in '' unknown PUBLIC; do
+    export INPUT_REPO_VISIBILITY="$visibility"
+    : > "$FAKE_CURL_LOG"
+    run bash "$BATS_TEST_DIRNAME/../../scripts/telemetry.sh"
+    [ "$status" -eq 0 ]
+    [ ! -s "$FAKE_CURL_LOG" ]
+  done
+  unset INPUT_REPO_VISIBILITY
+  : > "$FAKE_CURL_LOG"
+  run bash "$BATS_TEST_DIRNAME/../../scripts/telemetry.sh"
+  [ "$status" -eq 0 ]
+  [ ! -s "$FAKE_CURL_LOG" ]
+}
 
 @test "telemetry.sh: captures exactly ten typed fields without private data or UTM context" {
   before="$(sha256sum "$INPUT_SCAN_JSON")"

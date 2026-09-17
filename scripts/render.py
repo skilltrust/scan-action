@@ -264,11 +264,10 @@ def render(scan, delta, published, content, args):
                       "", *axis_table(scan, delta)])
     lines.extend(["", "<details>", "<summary>Scan details and scope</summary>", "", "| Run | Value |", "|---|---|"])
     mode = "Report only" if args.report_only == "true" else "Gate policy"
-    checkout = "Pull request head" if args.event == "pull_request" else "Workflow checkout"
     lines.extend(
         [
             f"| Scope | {safe(args.scope, 300)} |",
-            f"| Checkout | {checkout} |",
+            "| Checkout | Workflow checkout |",
             f"| Engine | skill-detector {safe(scalar(scan, 'version', 'unknown'), 40)} |",
             f"| Mode | {mode} |",
             f"| Files scanned | **{safe(scalar(scan, 'files_scanned', 0), 20)}** |",

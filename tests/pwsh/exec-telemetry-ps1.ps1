@@ -27,7 +27,8 @@ try {
   $env:INPUT_TELEMETRY_URL = "https://example.invalid/capture"
   $env:GITHUB_SERVER_URL = "https://github.com"
   $env:GITHUB_REPOSITORY = "private-owner/private-repo"
-  $env:GITHUB_REPOSITORY_VISIBILITY = "private"
+  $env:INPUT_REPO_VISIBILITY = "private"
+  Remove-Item Env:GITHUB_REPOSITORY_VISIBILITY -ErrorAction SilentlyContinue
   $env:GITHUB_EVENT_NAME = "pull_request"
   $env:RUNNER_OS = "Windows"
   $env:RUNNER_ARCH = "X64"
@@ -43,6 +44,25 @@ try {
   if ($payload.repo_hash -notmatch '^[0-9a-f]{64}$' -or $payload.repo_visibility -ne "private" -or $payload.finding_count -ne 1 -or $payload.delta_enabled -ne $false) { throw "telemetry value mismatch" }
   if ($request.Body -match 'private-owner|private-repo|DO_NOT_SEND|secret/path|utm_') { throw "private data leaked" }
   if ((Get-FileHash -Algorithm SHA256 $scan).Hash -ne $before) { throw "scan JSON changed" }
+
+  foreach ($visibility in @("public", "private", "internal")) {
+    $env:INPUT_REPO_VISIBILITY = $visibility
+    $wanted = if ($visibility -eq "public") { "public" } else { "private" }
+    $script:Requests = @()
+    . (Join-Path $Root "scripts/telemetry.ps1")
+    if ($script:Requests.Count -ne 1) { throw "known visibility did not send once: $visibility" }
+    $payload = $script:Requests[0].Body | ConvertFrom-Json
+    if ($payload.repo_visibility -cne $wanted) { throw "visibility mismatch: $visibility" }
+    if (Compare-Object @($payload.PSObject.Properties.Name | Sort-Object) $expected) { throw "visibility field set mismatch" }
+  }
+  $env:GITHUB_REPOSITORY_VISIBILITY = "public"
+  foreach ($visibility in @("", "unknown", "PUBLIC", $null)) {
+    $env:INPUT_REPO_VISIBILITY = $visibility
+    $script:Requests = @()
+    . (Join-Path $Root "scripts/telemetry.ps1")
+    if ($script:Requests.Count -ne 0) { throw "unknown visibility sent telemetry: $visibility" }
+  }
+  $env:INPUT_REPO_VISIBILITY = "private"
 
   $script:Requests = @()
   Set-Content -LiteralPath $scan -NoNewline -Value '{"findings":[],"no_agent_surface":true,"private_marker":"DO_NOT_SEND","file_path":"secret/path"}'

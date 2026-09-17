@@ -6,6 +6,15 @@ must not be inferred from prepared workflow code.
 
 ## Hosted checks completed
 
+Post-merge review, 2026-09-17: current `origin/main` is PR #22's
+[merge commit](https://github.com/skilltrust/scan-action/commit/2c847f0de7193ab818d2965ec3df5ad9f1cd4de4).
+[CI 35254445155](https://github.com/skilltrust/scan-action/actions/runs/35254445155)
+and [CodeQL 35254457527](https://github.com/skilltrust/scan-action/actions/runs/35254457527)
+passed on that exact commit. The three PR-only delivery/delta jobs were skipped
+on this push run; do not treat this run as fresh PR-delivery acceptance.
+
+Historical pre-merge evidence (not rerun by the post-merge review):
+
 PR [#22](https://github.com/skilltrust/scan-action/pull/22) candidate
 `2be9d833f3b3315a7defe0556c7483f6cebc1ce4` completed the prepared hosted
 workflow on 2026-09-17. [CI run 35200736807](https://github.com/skilltrust/scan-action/actions/runs/35200736807)
@@ -20,6 +29,30 @@ This does not authorize or prove a merge, release, tag or Marketplace change.
 Action metadata is prepared for compatible version v1.11.0, but ST-23 remains
 NO-GO: the Pencil-approved site design must ship at `/docs/action` before the
 release link gate can pass.
+
+## Release blockers and owner operations
+
+- Live read-only check on 2026-09-17: `/docs/action` returned HTTP 404; all
+  25 allowlisted rule pages passed `tests/release/check-published-rules.sh`.
+  **The automated release gate checks rule pages only**, not `/docs/action`.
+  Verify the documentation page separately before authorizing a tag.
+- `v1` still resolves to v1.10.0, which has no `report-only` input. Do not
+  advertise the candidate quickstart as released. Evaluate a reviewed full
+  candidate SHA until release; set the changelog date and remove the README
+  prerelease notice as part of the approved release preparation.
+- The visibility and checkout-label findings are fixed locally with regression
+  coverage; see `STATUS.md`. Existing hosted runs cover the merge commit, not
+  these follow-up changes. Obtain hosted checks on the final accepted SHA.
+- Complete the remaining hosted acceptance below, particularly rendered
+  Summary, real fork/App delivery, and artifact retrieval/retention.
+- Confirm both telemetry version literals and the changelog are v1.11.0,
+  detector remains v0.10.0, and release points to the accepted tested commit.
+  Tag push triggers `release.yml`, whose final step force-moves `v1` after the
+  rule-page check. Do not push a tag merely to test readiness.
+- Separately verify Marketplace listing, metadata, README and release notes
+  describe the version actually shipped. This workflow neither creates a
+  GitHub Release nor publishes/updates a Marketplace listing; those are owner
+  operations requiring explicit approval.
 
 ## Local acceptance surface
 
