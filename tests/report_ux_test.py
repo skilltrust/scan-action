@@ -13,8 +13,12 @@ spec.loader.exec_module(renderer)
 
 
 def finding(line, description, severity="HIGH", **fields):
-    return dict(rule_id="SD-004", file_path="AGENTS.md", line=line,
-                description=description, severity=severity, **fields)
+    values = dict(rule_id="SD-004", file_path="AGENTS.md", line=line,
+                  description=description, severity=severity,
+                  effective_severity=severity, diagnosis=description,
+                  remediation="Review and remove if unnecessary.")
+    values.update(fields)
+    return values
 
 
 class ReportUX(unittest.TestCase):
@@ -79,6 +83,16 @@ class ReportUX(unittest.TestCase):
                 if event == "schedule":
                     self.assertNotIn("PR is", text)
 
+    def test_malformed_or_inconsistent_fixed_findings_make_comparison_unavailable(self):
+        for fixed in ([{}], [copy.deepcopy(self.old)]):
+            with self.subTest(fixed=fixed):
+                self.delta = dict(new_findings=[], resolved_findings=fixed, per_axis={})
+                text = self.render()
+                self.assertIn("Comparison unavailable", text)
+                self.assertIn("### Current findings (3)", text)
+                self.assertNotIn("### New in this PR", text)
+                self.assertNotIn("### Fixed by this PR", text)
+
     def test_policy_matrix_uses_full_head_not_new_findings(self):
         self.delta["new_findings"] = []
         for code, report_only, warn_below in itertools.product("012", (True, False), (True, False)):
@@ -138,6 +152,18 @@ class ReportUX(unittest.TestCase):
             if event == "schedule":
                 self.assertNotIn("blocks merging", text)
 
+    def test_invalid_boolean_policy_input_never_claims_pass(self):
+        self.scan = dict(findings=[], axes={"security": {"grade": "A"}})
+        self.args.exit_code = "0"
+        self.delta = None
+        for field in ("report_only", "warn_below", "fail_no_surface"):
+            with self.subTest(field=field):
+                setattr(self.args, field, "TRUE")
+                text = self.render()
+                self.assertIn("SkillTrust check will fail — invalid boolean policy input", text)
+                self.assertNotIn("SkillTrust check passes", text)
+                setattr(self.args, field, "false" if field != "warn_below" else "true")
+
     def test_base_only_critical_visible_in_summary_even_when_detail_budget_exhausted(self):
         new = [finding(i, "new low", "LOW") for i in range(10)]
         self.scan["findings"] = new + [dict(self.old, severity="LOW", effective_severity="CRITICAL"),
@@ -151,6 +177,7 @@ class ReportUX(unittest.TestCase):
         self.assertNotIn("caused", text)
         self.scan["findings"][-3]["effective_severity"] = "INFO"
         self.scan["findings"][-2]["severity"] = "MEDIUM"
+        self.scan["findings"][-2]["effective_severity"] = "MEDIUM"
         self.assertIn("<summary>Already on base (3)</summary>", self.render())
 
     def test_hostile_data_in_all_buckets_is_inert_and_total_head_cap_is_ten(self):

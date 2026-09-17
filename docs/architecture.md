@@ -116,7 +116,8 @@ from head findings. Identity uses the source fields of detector v0.10.0's
 `pkg/delta.findingKey`: rule ID, file path, line, description (the detector
 hashes description with FNV-1a). It does not recompute the diff or line-shift
 pairing; those already happened in the detector. Remaining head occurrences
-are existing. An unmatched new occurrence makes comparison unavailable.
+are existing. An unmatched new occurrence, malformed delta finding, or fixed
+hard identity still present in head makes comparison unavailable.
 Only Security, Permission hygiene, and Transparency
 are public; raw Quality stays an output. Rendering failure writes a controlled
 visible fallback, warns, and exits zero so it cannot replace scan policy.

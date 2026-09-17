@@ -85,17 +85,20 @@ def finding_key(item):
 
 
 def outcome(scan, exit_code, report_only, warn_below, fail_no_surface):
+    if any(value not in {"true", "false"} for value in
+           (report_only, warn_below, fail_no_surface)):
+        return "will fail — invalid boolean policy input"
     if exit_code == "0" and scan.get("no_agent_surface") is True:
         return ("will fail — no agent files checked; fail-on-no-agent-surface is enabled"
-                if fail_no_surface else "passes — no agent files checked")
-    if report_only and exit_code in {"0", "1", "2"}:
+                if fail_no_surface == "true" else "passes — no agent files checked")
+    if report_only == "true" and exit_code in {"0", "1", "2"}:
         return "passes — report-only mode"
     if exit_code == "0":
         return "passes — no findings"
     if exit_code == "2":
         return "will fail — configured threshold reached"
     if exit_code == "1":
-        return ("passes — findings below threshold" if warn_below else
+        return ("passes — findings below threshold" if warn_below == "true" else
                 "will fail — findings below threshold; warn-on-below-threshold is disabled")
     return "status unavailable — check the job result"
 
@@ -108,12 +111,30 @@ def delta_identity(finding):
         ("rule_id", ""), ("file_path", ""), ("line", 0), ("description", "")))
 
 
+def valid_delta_finding(finding):
+    return (
+        isinstance(finding, dict) and
+        all(isinstance(finding.get(field), str) for field in
+            ("rule_id", "description", "file_path", "diagnosis", "remediation")) and
+        finding.get("severity") in SEVERITY and
+        finding.get("effective_severity") in SEVERITY and
+        type(finding.get("line")) is int and finding["line"] >= 0
+    )
+
+
 def partition(findings, delta):
     """Subtract the detector's new occurrences; duplicate counts matter."""
     for field in ("new_findings", "resolved_findings"):
         if field not in delta or (delta[field] is not None and not isinstance(delta[field], list)):
             raise ValueError("invalid delta findings")
-    budget = Counter(delta_identity(f) for f in (delta.get("new_findings") or []))
+    new_findings = delta.get("new_findings") or []
+    resolved_findings = delta.get("resolved_findings") or []
+    if not all(valid_delta_finding(f) for f in new_findings + resolved_findings):
+        raise ValueError("invalid delta finding")
+    head_identities = {delta_identity(f) for f in findings}
+    if any(delta_identity(f) in head_identities for f in resolved_findings):
+        raise ValueError("resolved finding is still present in head")
+    budget = Counter(delta_identity(f) for f in new_findings)
     new, existing = [], []
     for finding in findings:
         key = delta_identity(finding)
@@ -179,13 +200,10 @@ def render(scan, delta, published, content, args):
         except (TypeError, AttributeError, ValueError):
             delta = None
     no_surface = scan.get("no_agent_surface") is True
-    report_only = args.report_only == "true"
-    warn_below = args.warn_below == "true"
-    fail_no_surface = args.fail_no_surface == "true"
     heading = ("## SkillTrust — Nothing was checked" if no_surface else
                f"## SkillTrust — {len(findings)} current {'issue' if len(findings) == 1 else 'issues'}" if findings else
                "## SkillTrust — Clean — no findings")
-    lines = [heading, "", f"**SkillTrust check {outcome(scan, args.exit_code, report_only, warn_below, fail_no_surface)}.**"]
+    lines = [heading, "", f"**SkillTrust check {outcome(scan, args.exit_code, args.report_only, args.warn_below, args.fail_no_surface)}.**"]
     if args.event == "pull_request":
         lines.extend(["", "If this check is required, failure blocks merging."])
     if delta is not None:
@@ -245,7 +263,7 @@ def render(scan, delta, published, content, args):
                       "Grades describe findings, not whether this check fails. The policy above determines the check result.",
                       "", *axis_table(scan, delta)])
     lines.extend(["", "<details>", "<summary>Scan details and scope</summary>", "", "| Run | Value |", "|---|---|"])
-    mode = "Report only" if report_only else "Gate policy"
+    mode = "Report only" if args.report_only == "true" else "Gate policy"
     checkout = "Pull request head" if args.event == "pull_request" else "Workflow checkout"
     lines.extend(
         [

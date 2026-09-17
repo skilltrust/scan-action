@@ -156,7 +156,7 @@ JSON
 
 @test "safe renderer: resolved findings are bounded" {
   write_scan
-  jq -n '{per_axis:{},new_findings:[],axis_explanations:{},resolved_findings:[range(0;11)|{rule_id:"SD-001",file_path:"a",line:.,description:"gone"}]}' > "$RUNNER_TEMP/delta.json"
+  jq -n '{per_axis:{},new_findings:[],axis_explanations:{},resolved_findings:[range(0;11)|{rule_id:"SD-001",severity:"HIGH",effective_severity:"HIGH",file_path:"a",line:.,description:"gone",diagnosis:"gone",remediation:"remove it"}]}' > "$RUNNER_TEMP/delta.json"
   export INPUT_DELTA_JSON="$RUNNER_TEMP/delta.json"
   export INPUT_DELTA_ENABLED="true"
   render
