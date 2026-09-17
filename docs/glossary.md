@@ -10,8 +10,7 @@ defines only what is specific to the Action.
 
 A GitHub Action defined entirely by `runs: using: composite` plus an ordered
 list of steps that shell out. No compiled code, no container, no JavaScript
-bundle. It is what this repository is, and the reason every behaviour here
-lives in a shell script rather than in a program.
+bundle. This repository uses shell wrappers and one shared Python renderer.
 
 ### Delta mode
 
@@ -101,8 +100,8 @@ runners and `scripts/foo.ps1` for pwsh on Windows runners, selected by
 one and not the other and Windows diverges silently, because nothing compares
 them.
 
-The rule scopes to steps selected by `runner.os`. `run-tests.sh` never runs on
-a runner and `propagate-exit.sh` is `shell: bash` on every OS, so neither has a
+The rule scopes to steps selected by `runner.os`. `run-tests.sh` is a test
+entrypoint and `propagate-exit.sh` is `shell: bash` on every OS, so neither has a
 `.ps1` half and neither is a violation.
 
 ### Smoke job
@@ -142,7 +141,7 @@ read-only token.
 
 ### Telemetry payload
 
-Ten anonymous fields POSTed once per run: the Action and engine versions, the
+Ten pseudonymous fields POSTed once per validated run: the Action and engine versions, the
 runner OS and architecture, the repository's visibility, a **hash** of the
 repository URL, the grade, the finding count, the trigger, and whether delta
 was enabled. No repository name, no paths, no branch, no commit, no finding

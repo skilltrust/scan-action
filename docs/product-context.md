@@ -56,13 +56,14 @@ repository:
 
 - **Scanning runs inside the runner.** Results go only to configured GitHub
   surfaces (Summary, optional comment/artifact), never to SkillTrust. The
-  documented anonymous telemetry heartbeat contains no repository contents.
+  documented pseudonymous telemetry heartbeat contains no repository contents.
 - **A gate that is wrong often gets deleted.** A finding that is reported but
   does not block is still a finding the team can see. A build that reddens on
   something the team disagrees with is gone by the end of the week, and it
   takes the true findings with it. So the default gate is narrow and the
   reporting is wide: only a CRITICAL finding fails a build nobody configured,
-  and everything below that is shown in full.
+  and findings below that are still reported. Human reports are bounded;
+  validated raw JSON is complete. The onboarding workflow opts into report-only.
 
 ## The three surfaces
 

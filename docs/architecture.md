@@ -20,7 +20,7 @@ Each script whose step is selected by `runner.os` exists twice — `.sh` for
 bash, `.ps1` for pwsh. Two scripts are bash-only and are deliberately not
 pairs, because no `runner.os` condition picks them:
 
-- `run-tests.sh` — the local test entrypoint. Never runs on a runner at all.
+- `run-tests.sh` — the test entrypoint, used locally and in CI, not an Action step.
 - `propagate-exit.sh` — its step is `shell: bash` on every OS and reaches
   Windows through Git Bash.
 
@@ -34,10 +34,10 @@ POSIX branch gated on `runner.os != 'Windows'` and a Windows branch gated on
 |---|---|---|---|
 | 1 | Install | always | `install.{sh,ps1}` |
 | 2 | Scan | always | `scan.{sh,ps1}` |
-| 3 | Compute delta | `delta == 'true'` **and** the event is `pull_request` | `delta.{sh,ps1}` |
+| 3 | Compute delta | validated scan, `delta == 'true'` **and** the event is `pull_request` | `delta.{sh,ps1}` |
 | 4 | Render report | any validated completed scan | `render-comment.{sh,ps1}` + shared `render.py` |
-| 5 | Post sticky comment | the event is `pull_request` **and** `comment == 'true'` | `report.{sh,ps1}` |
-| 6 | Send telemetry | `telemetry == 'true'` | `telemetry.{sh,ps1}` |
+| 5 | Post sticky comment | validated scan, the event is `pull_request` **and** `comment == 'true'` | `report.{sh,ps1}` |
+| 6 | Send telemetry | validated scan **and** `telemetry == 'true'` | `telemetry.{sh,ps1}` |
 | 7 | Propagate exit code | always | `propagate-exit.sh` |
 
 Note step 6's condition: telemetry is **not** gated on the event, so it runs on
@@ -179,6 +179,7 @@ values are:
 | `SCAN_ACTION_DETECTOR_DIR` | `$GITHUB_ENV` | install | nothing; recorded for debugging |
 | `scan-json-path` | step output | validated scan | delta (`INPUT_HEAD_SCAN_JSON`), render (`INPUT_SCAN_JSON`), telemetry (`INPUT_SCAN_JSON`), and callers |
 | `grade`, `findings-count`, `no-agent-surface` | step outputs | scan | propagate-exit (`INPUT_GRADE`, `INPUT_FINDINGS_COUNT`, `INPUT_NO_AGENT_SURFACE`), and callers |
+| `result-valid` | internal step output | scan | conditions for delta, render, comment, telemetry; not a public Action output |
 | `SCAN_EXIT_CODE` | `$GITHUB_ENV` | scan | propagate-exit, read straight from the environment |
 | `SCAN_ACTION_DELTA_JSON` | `$GITHUB_ENV` | delta | render (`INPUT_DELTA_JSON`) |
 | `delta-json-path` | step output | delta | nothing; `action.yml` uses the `$GITHUB_ENV` value instead |

@@ -1,6 +1,6 @@
 # Changelog
 
-## [1.11.0] — 2026-09-17
+## [1.11.0] — Unreleased
 
 - Lead Summary and PR comments with the issue count, actual check policy and
   next step. Available PR delta separates new, already-on-base and fixed

@@ -9,6 +9,12 @@ The public report shows Security, Permission hygiene, and Transparency.
 
 ## Quickstart: report only
 
+**Release status:** this documents the unreleased v1.11.0 candidate. Until
+v1.11.0 is released and `v1` moves, the `@v1` examples below resolve to v1.10.0,
+which does not support `report-only`. For pre-release evaluation, replace the
+Action ref with a reviewed full candidate commit SHA; do not assume `@v1`
+already provides nonblocking findings. See [release readiness](docs/release-readiness.md).
+
 Copy `.github/workflows/skilltrust.yml`:
 
 ```yaml
@@ -29,6 +35,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - id: skilltrust
         uses: skilltrust/scan-action@v1
         with:
@@ -62,6 +69,11 @@ runner at `scan-json-path`. Optional GitHub artifact retrieval:
 ```
 
 Artifact retention and access then follow the repository's GitHub settings.
+Set `retention-days` on the upload step for a shorter lifetime. Runner scratch
+JSON is not a durable artifact. Job Summary belongs to the workflow run;
+the sticky PR comment is separate and is updated, not expired by this Action.
+Deleting an artifact does not delete the Summary or comment. Treat all three
+as repository-visible reports; `telemetry: 'false'` does not disable them.
 
 ## Requirements
 
@@ -86,7 +98,7 @@ Artifact retention and access then follow the repository's GitHub settings.
 | `fail-on-no-agent-surface` | `false` | Gate when nothing supported was checked. |
 | `report-only` | `false` | Convert validated finding exits `1`/`2` to success. Operational failures remain failures. |
 | `delta` | `false` | Compare PR head with base. Doubles scan runtime. |
-| `telemetry` | `true` | Send the anonymous ten-field heartbeat below. |
+| `telemetry` | `true` | Send the pseudonymous ten-field heartbeat below. |
 | `github-token` | `${{ github.token }}` | Same-repository PR comment token. Not passed to fork delivery. |
 | `detector-version` | `v0.10.0` | Exact detector release installed after checksum and reported-version verification. |
 
@@ -94,8 +106,8 @@ Artifact retention and access then follow the repository's GitHub settings.
 
 | Output | Contract |
 |---|---|
-| `grade` | Raw Quality-axis `A`/`B`/`C`/`D`/`F`; empty on no surface/failure. |
-| `scan-json-path` | Absolute path to validated, unmodified, complete JSON; empty on failure. |
+| `grade` | Raw Quality-axis `A`/`B`/`C`/`D`/`F`; empty on no surface or scan/tool/result error, retained on a findings-policy failure. |
+| `scan-json-path` | Absolute path to validated, unmodified, complete JSON; empty on scan/tool/result error, retained on a policy failure. |
 | `findings-count` | Total head finding count. |
 | `no-agent-surface` | `true` when no supported agent file was checked and no grade exists. |
 
@@ -127,6 +139,12 @@ The whole validated **head** result gates. `delta: 'true'` adds a base
 comparison for PR presentation only. Fetch, worktree, base scan, or delta
 failure is reported as **comparison unavailable**, never as zero change, and
 never replaces the head policy or JSON.
+
+The Action scans the caller's checkout. The quickstart explicitly checks out
+the PR head SHA (or the push SHA); without that `ref`, GitHub's default PR
+checkout is a synthetic merge commit, not the PR head. The base comparison
+uses the base branch tip fetched when the Action runs, not a merge base or a
+previous run. Custom checkouts change the compared tree accordingly.
 
 With an available PR comparison, reports distinguish:
 

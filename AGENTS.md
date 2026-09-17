@@ -6,7 +6,7 @@ This is the coding contract for `scan-action`. It applies to every agent and
 every contributor working in this repo. `CLAUDE.md` is a symlink to this file.
 
 `scan-action` is a GitHub Action wrapping the SkillTrust engine. **Composite
-action, shell only — no JS, no Docker, no compiled code.** Published to the
+action, shell wrappers and a shared Python renderer — no JS, no Docker, no compiled code.** Published to the
 Marketplace as `skilltrust/scan-action@v1`.
 
 ## Git branches
@@ -79,7 +79,7 @@ do not duplicate the table here).
 - **Scripts communicate through env vars and `$GITHUB_ENV`/`$GITHUB_OUTPUT`, with exactly one exception.** No shared state, no assumptions about cwd. Each script's header comment lists its required env; the cross-step values are tabulated in `docs/architecture.md`. Adding a value that crosses a step boundary means adding it to `action.yml`, to both halves of the pair, and to that table. The exception is the rendered comment body, which crosses from render to report as a file at `$RUNNER_TEMP/comment.md` — a path four scripts compute independently, so changing it means changing all four. Do not add a second exception; pass a path through the environment instead.
 - **Telemetry must never fail the build** — `set +e`, `curl … || true`, `exit 0`. Same for anything non-essential. A heartbeat that reddens a build is worse than no heartbeat.
 - **The sticky-comment marker `<!-- skilltrust:action:v1 -->` is a wire contract.** It must be the first line of the comment body; `report.{sh,ps1}` finds the existing comment by matching on it. Changing it orphans every comment already posted and turns the next run into a duplicate.
-- **Fork PRs cannot post comments.** GitHub hands a fork-origin PR a read-only token, so `report.{sh,ps1}` prints the rendered comment into the job log and emits a `::warning::` annotation instead of failing.
+- **Fork PRs cannot post Action comments.** The Action withholds its delivery token when head/base repository identities differ. `report.{sh,ps1}` makes no API call, prints an inertly prefixed report into the job log, and warns instead of failing. Summary remains available.
 - **The Action yields to the GitHub App.** If a comment carrying the App's marker is already on the PR, `report.{sh,ps1}` replaces its own comment with a superseded note and exits, so a repository running both does not carry two disagreeing grade comments.
 - **The scan step never fails.** It stashes the engine's exit code in `SCAN_EXIT_CODE`, and the final step re-raises it — that is what lets the comment, delta and telemetry steps run at all on a failing scan. Removing the final step makes a failing scan silent.
 - Tests are `bats` against fake binaries in `tests/bats/fixtures/`, so they never reach the network or GitHub. Run `./scripts/run-tests.sh`.
@@ -116,8 +116,8 @@ the following on inference; ask the maintainer first and get a yes:
 - **The sticky-comment marker `<!-- skilltrust:action:v1 -->`**, and its position as the first line of the body.
 - **The input names** — `path`, `fail-on`, `fail-on-axis`, `strict-mcp`, `scan-all`, `comment`, `warn-on-below-threshold`, `fail-on-no-agent-surface`, `report-only`, `delta`, `telemetry`, `github-token`, `detector-version` — and **the output names** — `grade`, `scan-json-path`, `findings-count`, `no-agent-surface`.
 - **The gate defaults**: `fail-on: critical` and `warn-on-below-threshold: 'true'`. Only a CRITICAL finding fails a build nobody configured. The default is written in three places that must agree — `action.yml`, the `FAIL_ON` fallback in `scan.{sh,ps1}`, and the `INPUT_WARN_ON_BELOW_THRESHOLD` fallback in `propagate-exit.sh`. `action.yml` is the source of truth and `tests/bats/gate-defaults.bats` reads it and pins all three.
-- **The telemetry-never-fails rule**, and the payload's field set. Telemetry is on by default; it stays anonymous and it stays incapable of failing a build.
-- **The exit-code mapping.** Only engine exit `1` is ever downgraded, and only under `warn-on-below-threshold: true`. `2` is a real threshold breach; `3` means the scan never ran, and a scan that could not run is not a passing scan. An unrecognised code is re-raised untouched rather than guessed at.
+- **The telemetry-never-fails rule**, and the payload's field set. Telemetry is on by default; its stable repository hash is pseudonymous, not anonymous. It contains no raw findings and cannot fail a build.
+- **The exit-code mapping.** With `report-only: false`, only engine exit `1` is downgraded, under `warn-on-below-threshold: true`. With `report-only: true`, validated finding exits `1` and `2` both succeed. Operational and unrecognised exits remain failures; `fail-on-no-agent-surface` remains independent.
 - **The `no-agent-surface` default.** A scan that read no agent configuration files produced no grade. It passes by default with the claim withdrawn loudly in the annotation and the comment, and gates only when `fail-on-no-agent-surface: true`. It is not a missing default to fill in.
 - **The floating `v1` tag** and what it is allowed to move across.
 
