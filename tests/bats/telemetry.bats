@@ -43,7 +43,7 @@ EOF
   export RUNNER_OS="Linux"
   export RUNNER_ARCH="X64"
   export INPUT_SCAN_JSON="$RUNNER_TEMP/scan.json"
-  export INPUT_ACTION_VERSION="1.10.0"
+  export INPUT_ACTION_VERSION="1.11.0"
   export INPUT_DETECTOR_VERSION="v0.10.0"
   export INPUT_DELTA_ENABLED="false"
 }
@@ -57,7 +57,7 @@ teardown() { teardown_tmpdir; }
   [ "$(jq 'keys | length' <<< "$body")" -eq 10 ]
   [ "$(jq -r 'keys | join(",")' <<< "$body")" = 'action_version,delta_enabled,detector_version,finding_count,grade,repo_hash,repo_visibility,runner_arch,runner_os,trigger' ]
   jq -e '
-    .action_version == "1.10.0" and .detector_version == "v0.10.0" and
+    .action_version == "1.11.0" and .detector_version == "v0.10.0" and
     .runner_os == "Linux" and .runner_arch == "X64" and
     .repo_visibility == "private" and (.repo_hash | test("^[0-9a-f]{64}$")) and
     .grade == "B" and .finding_count == 1 and

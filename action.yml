@@ -209,7 +209,7 @@ runs:
         INPUT_SCAN_JSON:        ${{ steps.scan.outputs.scan-json-path }}
         # Not derived from the tag. Bump it with every release, together with
         # the CHANGELOG entry — see the Release section of AGENTS.md.
-        INPUT_ACTION_VERSION:   1.10.0
+        INPUT_ACTION_VERSION:   1.11.0
         INPUT_DETECTOR_VERSION: ${{ inputs.detector-version }}
         INPUT_DELTA_ENABLED:    ${{ inputs.delta }}
       run: ${{ github.action_path }}/scripts/telemetry.sh
@@ -221,7 +221,7 @@ runs:
         INPUT_SCAN_JSON:        ${{ steps.scan-win.outputs.scan-json-path }}
         # Not derived from the tag. Bump it with every release, together with
         # the CHANGELOG entry — see the Release section of AGENTS.md.
-        INPUT_ACTION_VERSION:   1.10.0
+        INPUT_ACTION_VERSION:   1.11.0
         INPUT_DETECTOR_VERSION: ${{ inputs.detector-version }}
         INPUT_DELTA_ENABLED:    ${{ inputs.delta }}
       run: ${{ github.action_path }}/scripts/telemetry.ps1

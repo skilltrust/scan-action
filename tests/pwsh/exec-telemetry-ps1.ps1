@@ -21,7 +21,7 @@ try {
   Set-Content -LiteralPath $scan -NoNewline -Value '{"axes":{"security":{"grade":"B"},"quality":{"grade":"A"}},"findings":[{"private_marker":"DO_NOT_SEND","file_path":"secret/path"}]}'
   $before = (Get-FileHash -Algorithm SHA256 $scan).Hash
   $env:INPUT_SCAN_JSON = $scan
-  $env:INPUT_ACTION_VERSION = "1.10.0"
+  $env:INPUT_ACTION_VERSION = "1.11.0"
   $env:INPUT_DETECTOR_VERSION = "v0.10.0"
   $env:INPUT_DELTA_ENABLED = "false"
   $env:INPUT_TELEMETRY_URL = "https://example.invalid/capture"

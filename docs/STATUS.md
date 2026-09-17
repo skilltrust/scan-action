@@ -24,8 +24,11 @@ release, tag, floating-v1 move or Marketplace change was performed.
 - Full-head gating, raw JSON, public API/defaults, telemetry, fixed links/UTM,
   sticky marker, fork/App handling and pagination unchanged. Detail budgets
   remain ten head plus ten fixed findings.
-- Local verification: 116 Bats tests, including eleven Python UX tests; all six
-  native PowerShell harnesses (7.4.6 on Linux); real v0.10.0 gate-defaults and
+- Compatible v1.11.0 Action metadata is prepared locally. ST-23 remains NO-GO
+  until the Pencil-approved site design ships at `/docs/action`; no release,
+  tag, floating-v1 move or Marketplace change was performed.
+- Local verification: 117 Bats tests, including thirteen Python UX tests; all six
+  native PowerShell harnesses (7.6.6 on Linux); real v0.10.0 gate-defaults and
   m1-policy; local composite-equivalent harness. Bash/PowerShell reports match.
 - Real detector delta verified a shifted existing finding alongside two new,
   two existing and one fixed. Fake API checks prove repeat PATCH to one comment

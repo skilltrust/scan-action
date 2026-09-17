@@ -17,8 +17,9 @@ Workflow success does not itself prove every Job Summary's visual body; item 4
 below remains the acceptance boundary.
 
 This does not authorize or prove a merge, release, tag or Marketplace change.
-Release metadata still needs the selected version bump, and the site must ship
-`/docs/action` before the release link gate can pass.
+Action metadata is prepared for compatible version v1.11.0, but ST-23 remains
+NO-GO: the Pencil-approved site design must ship at `/docs/action` before the
+release link gate can pass.
 
 ## Local acceptance surface
 

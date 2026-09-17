@@ -58,7 +58,7 @@ WORKFLOW="$BATS_TEST_DIRNAME/../../.github/workflows/ci.yml"
 
 @test "action.yml: telemetry opt-out prevents either request step" {
   [ "$(grep -c "if: inputs.telemetry == 'true'" "$ACTION")" -eq 2 ]
-  [ "$(grep -c 'INPUT_ACTION_VERSION:   1.10.0' "$ACTION")" -eq 2 ]
+  [ "$(grep -c 'INPUT_ACTION_VERSION:   1.11.0' "$ACTION")" -eq 2 ]
 }
 
 @test "ci.yml: every synthetic local composite invocation disables telemetry" {

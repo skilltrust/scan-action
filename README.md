@@ -209,7 +209,7 @@ Once per validated run, the Action sends exactly these ten fields to
 
 ```json
 {
-  "action_version": "1.10.0",
+  "action_version": "1.11.0",
   "detector_version": "v0.10.0",
   "runner_os": "Linux",
   "runner_arch": "X64",
