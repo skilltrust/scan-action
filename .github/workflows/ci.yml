@@ -418,7 +418,7 @@ jobs:
           # smoke-pr-delta scans malicious-repo at fail-on high, so its report
           # must carry a blocking threshold outcome. A clean body would make
           # the rewrite assertion vacuous.
-          if ! printf '%s' "$body" | grep -qF -- 'Threshold reached — blocking'; then
+          if ! printf '%s' "$body" | grep -qF -- 'SkillTrust check will fail — configured threshold reached'; then
             echo "Expected smoke-pr-delta's blocking body; the malicious-to-clean assertion would be vacuous" >&2
             printf '%s\n' "$body" >&2
             exit 1

@@ -72,6 +72,11 @@ WORKFLOW="$BATS_TEST_DIRNAME/../../.github/workflows/ci.yml"
   [ "$status" -eq 0 ]
 }
 
+@test "ci.yml: live comment assertion follows current report policy wording" {
+  grep -qF -- 'SkillTrust check will fail — configured threshold reached' "$WORKFLOW"
+  ! grep -qF -- 'Threshold reached — blocking' "$WORKFLOW"
+}
+
 @test "report scripts paginate one lookup and never blanket-swallow it" {
   for script in "$BATS_TEST_DIRNAME/../../scripts/report.sh" "$BATS_TEST_DIRNAME/../../scripts/report.ps1"; do
     grep -q -- '--paginate --slurp' "$script"
