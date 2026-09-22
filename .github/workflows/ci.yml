@@ -279,7 +279,7 @@ jobs:
               [ "$(head -n 1 "$RUNNER_TEMP/comment.md")" = '<!-- skilltrust:action:v1 -->' ]
               for report in "$RUNNER_TEMP/comment.md"; do
                 grep -qF '### Warnings' "$report"
-                grep -qF 'Codex declaration-only analysis' "$report"
+                grep -qF 'Codex declaration\-only analysis' "$report"
                 grep -qF 'named profile file is only active' "$report"
               done
               ;;
@@ -289,7 +289,7 @@ jobs:
               [ "$NO_SURFACE" = false ]
               [[ "$GRADE" =~ ^[ABCDF]$ ]]
               jq -e '(.findings | length) == 1 and .findings[0].rule_id == "SD-026"' "$JSON_PATH"
-              grep -qF 'SD-026' "$RUNNER_TEMP/comment.md"
+              grep -qF 'SD\-026' "$RUNNER_TEMP/comment.md"
               ;;
             malformed|timeout)
               [ "$OUTCOME" = failure ]
@@ -304,10 +304,10 @@ jobs:
           summaries = [p.read_text(encoding="utf-8") for p in
                        Path(os.environ["GITHUB_STEP_SUMMARY"]).parent.glob("step_summary_*")]
           if os.environ["CASE"] == "clean":
-              assert any("### Warnings" in s and "Codex declaration-only analysis" in s
+              assert any("### Warnings" in s and r"Codex declaration\-only analysis" in s
                          and "named profile file is only active" in s for s in summaries)
           elif os.environ["CASE"] == "danger":
-              assert any("SD-026" in s for s in summaries)
+              assert any(r"SD\-026" in s for s in summaries)
           PY
 
   # The four gate-default verification cases against the REAL engine. bats runs
