@@ -35,7 +35,7 @@ ruby -ryaml -e '
   raise "input contract drift" unless action.fetch("inputs").keys.sort == expected_inputs
   raise "output contract drift" unless action.fetch("outputs").keys.sort == expected_outputs
   raise "report-only default drift" unless action.dig("inputs", "report-only", "default") == "false"
-  raise "detector pin drift" unless action.dig("inputs", "detector-version", "default") == "v0.10.0"
+  raise "detector pin drift" unless action.dig("inputs", "detector-version", "default") == "v0.11.0"
   expected_outputs.each do |name|
     value = action.dig("outputs", name, "value")
     raise "unbridged output #{name}" unless value.include?("steps.scan.outputs.#{name} || steps.scan-win.outputs.#{name}")
