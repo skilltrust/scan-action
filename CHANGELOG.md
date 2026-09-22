@@ -1,6 +1,6 @@
 # Changelog
 
-## [1.12.0] — Unreleased
+## [1.12.0] — 2026-09-22
 
 - Default detector moves from v0.10.0 to v0.11.0. Codex TOML MCP, approval
   and sandbox declarations are analyzed; SD-026 flags unrestricted sandboxes.
