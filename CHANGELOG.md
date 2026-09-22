@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.12.0] — Unreleased
+
+- Default detector moves from v0.10.0 to v0.11.0. Codex TOML MCP, approval
+  and sandbox declarations are analyzed; SD-026 flags unrestricted sandboxes.
+  Declaration-only warnings remain visible in Summary and PR reports, including
+  zero-finding scans. Malformed/unsupported analyzed configs and overflowing
+  timeouts fail without successful outputs, even with report-only enabled.
+- This grade-changing engine update also detects reads of npm/Codex credential
+  stores (ST-126) and permits bounded emoji presentation selectors before ZWJ.
+  JSON 1.5, Action outputs and gate defaults remain unchanged.
+- Add real Codex composite checks on Linux, macOS and Windows. Keep SD-026
+  unlinked until its hosted rule page is published; rule-link allowlisting is
+  independent of the engine version.
+
 ## [1.11.0] — 2026-09-17
 
 - Source telemetry visibility from event repository metadata on both OS paths.

@@ -229,6 +229,87 @@ jobs:
           [ "$OUTCOME" = failure ]
           [ -z "$GRADE$JSON_PATH$COUNT$NO_SURFACE" ]
 
+  # Detector v0.11.0 Codex config regression through the real composite on
+  # every supported runner. This is separate from m3-composite-supported: that
+  # matrix pins the general install/scan/output/error contract, while this one
+  # pins Codex TOML diagnostics, SD-026, and rendered warnings.
+  codex-composite-v011:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        case: [clean, danger, malformed, timeout]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+      - id: action
+        continue-on-error: true
+        uses: ./
+        with:
+          path: tests/fixtures/codex-${{ matrix.case }}
+          fail-on: high
+          report-only: ${{ (matrix.case == 'malformed' || matrix.case == 'timeout') && 'true' || 'false' }}
+          comment: 'false'
+          delta: 'false'
+          telemetry: 'false'
+      - name: Assert Codex scan, diagnostics, rendering, and policy
+        if: always()
+        shell: bash
+        env:
+          CASE: ${{ matrix.case }}
+          OUTCOME: ${{ steps.action.outcome }}
+          GRADE: ${{ steps.action.outputs.grade }}
+          JSON_PATH: ${{ steps.action.outputs.scan-json-path }}
+          COUNT: ${{ steps.action.outputs.findings-count }}
+          NO_SURFACE: ${{ steps.action.outputs.no-agent-surface }}
+        run: |
+          set -euo pipefail
+          case "$CASE" in
+            clean)
+              [ "$OUTCOME" = success ]
+              [ "$COUNT" -eq 0 ]
+              [ "$NO_SURFACE" = false ]
+              [[ "$GRADE" =~ ^[ABCDF]$ ]]
+              jq -e '
+                (.findings | length) == 0 and
+                (.warnings | length) == 3 and
+                ([.warnings[] | select(contains("Codex declaration-only analysis"))] | length) == 2 and
+                ([.warnings[] | select(contains("named profile file is only active"))] | length) == 1
+              ' "$JSON_PATH"
+              [ "$(head -n 1 "$RUNNER_TEMP/comment.md")" = '<!-- skilltrust:action:v1 -->' ]
+              for report in "$RUNNER_TEMP/comment.md"; do
+                grep -qF '### Warnings' "$report"
+                grep -qF 'Codex declaration-only analysis' "$report"
+                grep -qF 'named profile file is only active' "$report"
+              done
+              ;;
+            danger)
+              [ "$OUTCOME" = failure ]
+              [ "$COUNT" -eq 1 ]
+              [ "$NO_SURFACE" = false ]
+              [[ "$GRADE" =~ ^[ABCDF]$ ]]
+              jq -e '(.findings | length) == 1 and .findings[0].rule_id == "SD-026"' "$JSON_PATH"
+              grep -qF 'SD-026' "$RUNNER_TEMP/comment.md"
+              ;;
+            malformed|timeout)
+              [ "$OUTCOME" = failure ]
+              [ -z "$GRADE$JSON_PATH$COUNT$NO_SURFACE" ]
+              [ ! -e "$RUNNER_TEMP/comment.md" ]
+              ;;
+          esac
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+          # GitHub gives each composite step a different summary file.
+          summaries = [p.read_text(encoding="utf-8") for p in
+                       Path(os.environ["GITHUB_STEP_SUMMARY"]).parent.glob("step_summary_*")]
+          if os.environ["CASE"] == "clean":
+              assert any("### Warnings" in s and "Codex declaration-only analysis" in s
+                         and "named profile file is only active" in s for s in summaries)
+          elif os.environ["CASE"] == "danger":
+              assert any("SD-026" in s for s in summaries)
+          PY
+
   # The four gate-default verification cases against the REAL engine. bats runs
   # against a fake detector that returns whatever exit code the test hands it,
   # so it can prove the plumbing and never that one-high-repo actually yields

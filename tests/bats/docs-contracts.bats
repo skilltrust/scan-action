@@ -35,7 +35,7 @@ ROOT="$BATS_TEST_DIRNAME/../.."
   expected="$(seq -f 'SD-%03g' 1 25)"
   [ "$ids" = "$expected" ]
   grep -q '2026-09-15' "$ROOT/config/published-rule-ids.txt"
-  grep -q "default: 'v0.10.0'" "$ROOT/action.yml"
+  grep -q "default: 'v0.11.0'" "$ROOT/action.yml"
 }
 
 @test "release gate checks every allowlisted public page" {
