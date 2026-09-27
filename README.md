@@ -94,7 +94,7 @@ as repository-visible reports; `telemetry: 'false'` does not disable them.
 | `delta` | `false` | Compare PR head with base. Doubles scan runtime. |
 | `telemetry` | `true` | Send the pseudonymous ten-field heartbeat below. |
 | `github-token` | `${{ github.token }}` | Same-repository PR comment token. Not passed to fork delivery. |
-| `detector-version` | `v0.11.0` | Exact detector release installed after checksum and reported-version verification. |
+| `detector-version` | `v0.12.0` | Exact detector release installed after checksum and reported-version verification. |
 
 ## Outputs
 
@@ -157,14 +157,18 @@ show **current findings** without claiming new/existing/fixed status.
 
 ## What is scanned
 
-Detector `v0.11.0` recognizes:
+Detector `v0.12.0` recognizes:
 
 - skill roots (`SKILL.md`, `skill.yaml`) and their subtrees;
 - `CLAUDE.md`, `AGENTS.md`, `GEMINI.md`, `.cursorrules`,
-  `.cursor/rules/*.mdc`, `.github/copilot-instructions.md`, `.windsurfrules`;
+  `.cursor/rules/*.mdc`, `.github/copilot-instructions.md`, recursive
+  `.github/instructions/**/*.instructions.md`, root `.github/agents/*.agent.md`,
+  `.windsurfrules`;
 - agent directories such as `.claude/`, `.agents/`, `.codex/`, `.opencode/`,
   `.cursor/`, `.gemini/`, `.windsurf/`;
-- supported MCP/settings files, including `.mcp.json` and harness MCP paths.
+- supported MCP/settings files, including `.mcp.json` and harness MCP paths;
+- root `.github/hooks/*.json` and inline hooks in
+  `.github/copilot/settings.json` / `settings.local.json`.
 
 Default discovery honors the root `.gitignore`. `scan-all: 'true'` disables
 that filtering and broadens to known text/script extensions. It does **not**
@@ -172,7 +176,7 @@ override hard skips: `.git`, `node_modules`, `vendor`, `dist`, `build`,
 `target`, and `.next` are never scanned.
 
 Content rules work across supported harness instruction files. Harness-specific
-structural parsing is not universal: v0.11.0 structurally understands Claude
+structural parsing is not universal: v0.12.0 structurally understands Claude
 settings/hooks/MCP and supported Codex TOML MCP, approval and sandbox declarations
 in `.codex/config.toml` and named `.codex/*.config.toml`, including nested copies.
 Codex warnings describe unresolved trust, profile selection and source precedence;
@@ -180,6 +184,9 @@ helpers are never executed. Unsupported analyzed declarations and malformed TOML
 fail scanning even in report-only mode. OpenCode, Gemini, Cursor, Copilot and
 Windsurf formats retain partial file/content coverage. This is a supported
 boundary, not a claim that every harness setting or source file was reviewed.
+Copilot hooks and instruction/agent frontmatter are validated separately from
+prose; invalid analyzed structures fail without grades. Folder trust, path
+matching, agent selection and runtime hook activation remain unknown.
 
 No-agent-surface means no recognized file was checked. It has no grades and is
 not rendered as clean.
@@ -227,8 +234,8 @@ For validated runs with known repository visibility, the Action sends exactly th
 
 ```json
 {
-  "action_version": "1.12.0",
-  "detector_version": "v0.11.0",
+  "action_version": "1.13.0",
+  "detector_version": "v0.12.0",
   "runner_os": "Linux",
   "runner_arch": "X64",
   "repo_visibility": "public",
@@ -261,7 +268,7 @@ missing or unrecognized, no heartbeat is sent rather than guessing `public`.
 
 `skilltrust/scan-action@v1` follows compatible v1 releases. For immutable
 supply-chain pinning, use a reviewed full commit SHA. `detector-version` is
-already exact (`v0.11.0`); its archive checksum and installed binary's reported
+already exact (`v0.12.0`); its archive checksum and installed binary's reported
 version are verified before use.
 
 ## License

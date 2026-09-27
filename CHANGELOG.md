@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.13.0] — 2026-09-27
+
+- Default detector moves from v0.11.0 to v0.12.0. Repository Copilot hooks,
+  recursive path instructions, root custom-agent profiles and authoritative
+  inline hook settings now enter the scanner. Inert credential reads can lower
+  grades or fail the existing gate; malformed analyzed hook/frontmatter input
+  fails without grades. Folder trust, path/agent selection and hook activation
+  remain unknown. No Action input/output, JSON schema or gate default changes.
+
 ## [1.12.0] — 2026-09-22
 
 - Default detector moves from v0.10.0 to v0.11.0. Codex TOML MCP, approval
