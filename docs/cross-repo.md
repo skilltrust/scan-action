@@ -48,10 +48,12 @@ Moving the pin is also a user-visible change on its own: a new engine version
 can move a grade on a repository whose contents did not change. It belongs in
 `CHANGELOG.md`, in the same pull request, with what moved.
 
-The candidate Action pins detector v0.11.0 (JSON 1.5). Codex declaration
-warnings use the existing report path; unsupported analyzed configurations
-remain operational failures, including in report-only mode. Rule-page links
-use the separately published allowlist, not the engine's rule count.
+The candidate Action pins detector v0.12.0 (JSON 1.5). Copilot hook commands,
+path instructions and custom-agent prose are inspected at the documented
+repository paths; invalid analyzed structures remain operational failures,
+including in report-only mode. Rule-page links use the separately published
+allowlist, not the engine's rule count. The hosted module and CI fixture pins
+must move independently to v0.12.0.
 
 An agent working only inside this repository cannot move the other two pins —
 they live in a repository it cannot see. The correct ending is a handoff that
