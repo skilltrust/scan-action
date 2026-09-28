@@ -25,7 +25,7 @@ UTM = "utm_source=github&utm_medium=scan_action&utm_campaign=free_action_launch"
 
 
 def safe(value, limit=MAX_TEXT):
-    """Make untrusted scalar inert in Markdown, HTML, mentions and log output."""
+    """Escape untrusted scalars for Markdown, HTML, mentions and log output."""
     raw = str(value if value is not None else "")
     raw = "".join(" " if unicodedata.category(char) in {"Cc", "Cf", "Cs"} else char for char in raw)
     text = " ".join(raw.split())

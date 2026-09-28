@@ -127,7 +127,7 @@ comment locally, including string bodies and numeric IDs. Lookup or schema
 failure warns and exits without POST/PATCH, preventing duplicates. A marker
 match is PATCHed; no match is POSTed. All API/native failures warn and preserve Summary
 and policy. Before API access, head and base repository identities are compared:
-a mismatch gets no token or Action comment and its inertly prefixed log copy is
+a mismatch gets no token or Action comment and its line-prefixed log copy is
 App-delivery-only. If the App marker exists, the Action replaces its own old
 comment with the controlled superseded note and yields.
 
@@ -293,7 +293,7 @@ require `pwsh` on `PATH` and return skip code 77 when it is unavailable.
   malformed-result and repeated scan cases. It checks difficult native paths,
   exact raw JSON bytes, deferred exits and all public step outputs.
 - `exec-reporting-ps1.sh` executes the shared renderer and PowerShell delivery
-  path, including sticky update and inert fork logging.
+  path, including sticky update and line-prefixed fork logging.
 - `exec-install-ps1.sh` verifies both Windows architecture assets, checksums,
   version matching, and adverse download/archive cases with local fixtures.
 - `exec-telemetry-ps1.sh` captures the exact ten fields locally and covers

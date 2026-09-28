@@ -30,7 +30,7 @@ if ($env:INPUT_HEAD_REPOSITORY -ne $env:INPUT_BASE_REPOSITORY) {
   Write-Host "::group::SkillTrust comment (would-be)"
   Get-Content -LiteralPath $commentFile | ForEach-Object { Write-Host "| $_" }
   Write-Host "::endgroup::"
-  Write-DeliveryWarning "fork PRs receive App delivery only; Action report printed inertly above"
+  Write-DeliveryWarning "fork PRs receive App delivery only; Action report printed with line prefixes above"
   exit 0
 }
 

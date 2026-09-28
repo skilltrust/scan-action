@@ -17,8 +17,8 @@ bundle. This repository uses shell wrappers and one shared Python renderer.
 `delta: true`. On pull-request triggers the Action also scans the base ref and
 runs the engine's `delta` sub-command, so the report shows public-axis movement
 and new/existing/fixed groups instead of head-only current findings. “Fixed by
-this PR” means present on current base, absent from current head—not fixed
-since an earlier run. A finding added and removed within the PR is absent
+this PR” means present on current base, absent from current head, regardless
+of earlier runs. A finding added and removed within the PR is absent
 from both snapshots and is not reported as fixed. No run history is stored.
 
 It **doubles runtime**, because it means two full scans. Off by default. It
@@ -51,7 +51,7 @@ someone who never looked: a renamed or removed input or output needs a `v2`.
 
 A pull request is a fork when head and base repository identities differ.
 `action.yml` then withholds the token and `report.{sh,ps1}` makes no API call.
-It prefixes every rendered line before inert log output, warns, and leaves PR
+It prefixes every rendered line before printing to the log, warns, and leaves PR
 delivery to an installed App. Summary and scan policy remain available.
 
 ### Gate defaults

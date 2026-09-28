@@ -39,7 +39,7 @@ if [ "$INPUT_HEAD_REPOSITORY" != "$INPUT_BASE_REPOSITORY" ]; then
   echo "::group::SkillTrust comment (would-be)"
   sed 's/^/| /' "$COMMENT_FILE"
   echo "::endgroup::"
-  warn_delivery "fork PRs receive App delivery only; Action report printed inertly above"
+  warn_delivery "fork PRs receive App delivery only; Action report printed with line prefixes above"
   exit 0
 fi
 

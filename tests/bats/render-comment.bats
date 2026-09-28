@@ -90,7 +90,7 @@ render() { run bash "$BATS_TEST_DIRNAME/../../scripts/render-comment.sh"; }
   grep -q '^\- \*\*INFO\*\*.*SD-003' "$RUNNER_TEMP/comment.md"
 }
 
-@test "safe renderer: hostile Markdown HTML links images mentions and commands are inert" {
+@test "safe renderer: hostile Markdown HTML links images mentions and commands are escaped" {
   write_scan '[{"rule_id":"[x](https://evil.invalid/a)","severity":"critical","file_path":"</code>\n::error::boom","line":4,"diagnosis":"<img src=x onerror=alert(1)> ![p](https://evil.invalid/i) @everyone ::warning::x \u001b[2J \u202e","remediation":"<script>x</script>"}]' '["::error::warning <b>@team</b>"]'
   export INPUT_PATH='[repo](https://evil.invalid/repo) @all'
   render
