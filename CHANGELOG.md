@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.14.0] — 2026-09-28
+
+- Default detector moves from v0.12.0 to v0.12.1. Copilot diagnostics now
+  distinguish documented version and source conditions, including supported
+  custom-agent MCP commands; newly checked commands can change findings and
+  grades. Missing launch context or plugin origin remains unresolved rather
+  than proof of effective runtime behavior. The Action supplies no such runtime
+  context. Input/output names, JSON schema and gate defaults are unchanged.
+
 ## [1.13.0] — 2026-09-27
 
 - Default detector moves from v0.11.0 to v0.12.0. Repository Copilot hooks,
