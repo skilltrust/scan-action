@@ -180,7 +180,7 @@ class ReportUX(unittest.TestCase):
         self.scan["findings"][-2]["effective_severity"] = "MEDIUM"
         self.assertIn("<summary>Already on base (3)</summary>", self.render())
 
-    def test_hostile_data_in_all_buckets_is_inert_and_total_head_cap_is_ten(self):
+    def test_hostile_data_in_all_buckets_is_escaped_and_total_head_cap_is_ten(self):
         hostile = '</details><script>alert(1)</script> ![x](https://evil.invalid) @everyone\n::error::boom'
         new = [finding(i, hostile, remediation=hostile) for i in range(7)]
         old = [finding(i + 20, hostile) for i in range(8)]
