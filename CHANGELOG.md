@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.15.0] — 2026-09-28
+
+- Default detector moves from v0.12.1 to v0.13.0. SD-027 inventories
+  command-valued settings in bounded nested bare Git config without running
+  Git or configured commands. It reports an unverified runtime condition, not
+  confirmed execution or CVE exposure. Invalid or unsupported config and
+  symlink markers fail without grades. High findings can fail opt-in High or
+  security-axis gates; the default Critical gate does not change. Input/output
+  names, JSON 1.5 and exit-code mapping remain unchanged.
+
 ## [1.14.1] — 2026-09-28
 
 - Stop publishing internal status and release-readiness documents. Keep them
