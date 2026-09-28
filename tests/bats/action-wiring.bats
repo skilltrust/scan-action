@@ -58,7 +58,7 @@ WORKFLOW="$BATS_TEST_DIRNAME/../../.github/workflows/ci.yml"
 
 @test "action.yml: telemetry opt-out prevents either request step" {
   [ "$(grep -c "if: inputs.telemetry == 'true'" "$ACTION")" -eq 2 ]
-  [ "$(grep -c 'INPUT_ACTION_VERSION:   1.13.0' "$ACTION")" -eq 2 ]
+  [ "$(grep -c 'INPUT_ACTION_VERSION:   1.14.0' "$ACTION")" -eq 2 ]
 }
 
 @test "action.yml: both telemetry steps receive event repository visibility without a public fallback" {
