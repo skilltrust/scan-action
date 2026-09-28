@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.14.1] — 2026-09-28
+
+- Stop publishing internal status and release-readiness documents. Keep them
+  in the private workspace snapshot instead. Repair public documentation links
+  and reword report diagnostics without changing scan or gate behavior.
+
 ## [1.14.0] — 2026-09-28
 
 - Default detector moves from v0.12.0 to v0.12.1. Copilot diagnostics now
