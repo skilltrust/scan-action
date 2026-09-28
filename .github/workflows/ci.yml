@@ -184,7 +184,7 @@ jobs:
           [ "$NO_SURFACE" = false ]
           [ "$(jq '.findings | length' "$JSON_PATH")" -eq "$COUNT" ]
       - name: Preserve complete expected-block JSON as an artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: m3-report-only-${{ matrix.os }}
           path: ${{ steps.findings.outputs.scan-json-path }}
