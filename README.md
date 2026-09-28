@@ -237,7 +237,7 @@ For validated runs with known repository visibility, the Action sends exactly th
 
 ```json
 {
-  "action_version": "1.14.0",
+  "action_version": "1.14.1",
   "detector_version": "v0.12.1",
   "runner_os": "Linux",
   "runner_arch": "X64",
